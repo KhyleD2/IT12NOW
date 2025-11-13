@@ -1,0 +1,28 @@
+@extends('layouts.app')
+
+@section('content')
+<h1 class="text-3xl font-bold mb-6 text-green-700">Add Customer</h1>
+
+@if ($errors->any())
+<div class="bg-red-100 text-red-700 p-2 rounded mb-4">
+    <ul>
+        @foreach ($errors->all() as $error)
+            <li>{{ $error }}</li>
+        @endforeach
+    </ul>
+</div>
+@endif
+
+<form action="{{ route('customers.store') }}" method="POST" class="bg-white p-6 rounded shadow">
+    @csrf
+    <div class="mb-4">
+        <label>Customer Name</label>
+        <input type="text" name="Customer_Name" class="w-full border p-2 rounded" required>
+    </div>
+    <div class="mb-4">
+        <label>Contact Number</label>
+        <input type="text" name="Contact_Number" class="w-full border p-2 rounded">
+    </div>
+    <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Add Customer</button>
+</form>
+@endsection
