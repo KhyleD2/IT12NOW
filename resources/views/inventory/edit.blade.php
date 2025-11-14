@@ -29,6 +29,15 @@
         <input type="number" name="Quantity_in_Stock" value="{{ $inventory->Quantity_in_Stock }}" class="w-full border p-2 rounded" required>
     </div>
     <div class="mb-4">
+    <label>Expiry Date</label>
+    <input 
+        type="date" 
+        name="expiry_date" 
+        class="w-full border p-2 rounded" 
+        min="<?php echo date('Y-m-d'); ?>" 
+        required>
+</div>
+    <div class="mb-4">
         <label>Unit Price</label>
         <input type="number" step="0.01" name="unit_price" value="{{ $inventory->unit_price }}" class="w-full border p-2 rounded" required>
     </div>
