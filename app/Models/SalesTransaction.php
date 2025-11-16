@@ -13,14 +13,14 @@ class SalesTransaction extends Model
     ];
 
     public function customer() {
-        return $this->belongsTo(Customer::class, 'Customer_ID');
+        return $this->belongsTo(Customer::class, 'Customer_ID', 'Customer_ID');
     }
 
     public function user() {
-        return $this->belongsTo(User::class, 'User_ID');
+        return $this->belongsTo(User::class, 'User_ID', 'User_ID');
     }
 
     public function details() {
-        return $this->hasMany(TransactionDetail::class, 'transaction_ID');
+        return $this->hasMany(TransactionDetail::class, 'transaction_ID', 'transaction_ID');
     }
 }

@@ -57,4 +57,40 @@ class ProductController extends Controller
         $product->delete();
         return redirect()->route('products.index')->with('success', 'Product deleted successfully!');
     }
+public function sales()
+{
+    return $this->hasMany(Sale::class, 'Product_ID', 'Product_ID');
+}
+
+public function returnedItems()
+{
+    return $this->hasMany(ReturnedItem::class, 'Product_ID', 'Product_ID');
+}
+
+public function getIsLowStockAttribute()
+{
+    return $this->Quantity_in_Stock <= $this->reorder_level;
+}
+
+public function getIsExpiringSoonAttribute()
+{
+    if (!$this->expiry_date) return false;
+    return $this->expiry_date->isBetween(now(), now()->addDays(7));
+}
+
+public function scopeLowStock($query)
+{
+    return $query->whereRaw('Quantity_in_Stock <= reorder_level');
+}
+
+public function scopeExpiringSoon($query)
+{
+    return $query->whereBetween('expiry_date', [now(), now()->addDays(7)]);
+}
+
+public function scopeByCategory($query, $category)
+{
+    return $query->where('Category', $category);
+}
+
 }

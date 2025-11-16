@@ -12,13 +12,15 @@ class Customer extends Model
         'Customer_Name', 'Contact_Number'
     ];
 
+    // Get ALL sales transactions for this customer
     public function sales()
     {
-        return $this->hasMany(SalesTransaction::class, 'Customer_ID');
+        return $this->hasMany(SalesTransaction::class, 'Customer_ID', 'Customer_ID');
     }
 
+    // Get only the latest sale (if you need it somewhere)
     public function latestSale()
     {
-        return $this->hasOne(SalesTransaction::class, 'Customer_ID')->latest('transaction_date');
+        return $this->hasOne(SalesTransaction::class, 'Customer_ID', 'Customer_ID')->latest('transaction_date');
     }
 }

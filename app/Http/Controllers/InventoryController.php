@@ -1,4 +1,5 @@
 <?php
+// app/Http/Controllers/InventoryController.php
 
 namespace App\Http\Controllers;
 
@@ -9,20 +10,10 @@ use Illuminate\Http\Request;
 class InventoryController extends Controller
 {
     public function index()
-{
-    $products = Product::with('supplier')->get();
-    
-    // Calculate days until expiry for each product
-    foreach ($products as $product) {
-        if ($product->expiry_date) {
-            $expiryDate = \Carbon\Carbon::parse($product->expiry_date);
-            $today = \Carbon\Carbon::today();
-            $product->days_until_expiry = $today->diffInDays($expiryDate, false);
-        }
+    {
+        $products = Product::with(['supplier', 'stockIns'])->get();
+        return view('inventory.index', compact('products'));
     }
-    
-    return view('inventory.index', compact('products'));
-}
 
     public function create()
     {
@@ -32,26 +23,29 @@ class InventoryController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'Product_Name' => 'required|string|max:255',
-            'Category' => 'required|string|max:255',
-            'Quantity_in_Stock' => 'required|integer|min:0',
-            'unit_price' => 'required|numeric|min:0',
+            'Category' => 'required|string',
+            'variety' => 'nullable|string',
+            'description' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'Supplier_ID' => 'required|exists:suppliers,Supplier_ID',
-            'expiry_date' => 'nullable|date|after:today', // NEW: Expiry date validation
         ]);
 
-        Product::create([
-            'Product_Name' => $request->Product_Name,
-            'Category' => $request->Category,
-            'Quantity_in_Stock' => $request->Quantity_in_Stock,
-            'unit_price' => $request->unit_price,
-            'Supplier_ID' => $request->Supplier_ID,
-            'expiry_date' => $request->expiry_date, // NEW: Save expiry date
-            'reorder_level' => 10, // Default reorder level
-        ]);
+        // Handle image upload
+        if ($request->hasFile('image')) {
+            $validated['image'] = $request->file('image')->store('products', 'public');
+        }
 
-        return redirect()->route('inventory.index')->with('success', 'Product added successfully.');
+        // Set initial values (will be updated by stock-ins)
+        $validated['Quantity_in_Stock'] = 0;
+        $validated['unit_price'] = 0;
+        $validated['reorder_level'] = 5;
+
+        Product::create($validated);
+
+        return redirect()->route('inventory.index')
+            ->with('success', 'Product added successfully! Now add stock for this product.');
     }
 
     public function edit(Product $inventory)
@@ -62,31 +56,29 @@ class InventoryController extends Controller
 
     public function update(Request $request, Product $inventory)
     {
-        $request->validate([
+        $validated = $request->validate([
             'Product_Name' => 'required|string|max:255',
-            'Category' => 'required|string|max:255',
-            'Quantity_in_Stock' => 'required|integer|min:0',
-            'unit_price' => 'required|numeric|min:0',
+            'Category' => 'required|string',
+            'variety' => 'nullable|string',
+            'description' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'Supplier_ID' => 'required|exists:suppliers,Supplier_ID',
-            'expiry_date' => 'nullable|date', // NEW: Allow past dates for existing products
         ]);
 
-        $inventory->update([
-            'Product_Name' => $request->Product_Name,
-            'Category' => $request->Category,
-            'Quantity_in_Stock' => $request->Quantity_in_Stock,
-            'unit_price' => $request->unit_price,
-            'Supplier_ID' => $request->Supplier_ID,
-            'expiry_date' => $request->expiry_date, // NEW: Update expiry date
-            'reorder_level' => $inventory->reorder_level ?? 10,
-        ]);
+        if ($request->hasFile('image')) {
+            $validated['image'] = $request->file('image')->store('products', 'public');
+        }
 
-        return redirect()->route('inventory.index')->with('success', 'Product updated successfully.');
+        $inventory->update($validated);
+
+        return redirect()->route('inventory.index')
+            ->with('success', 'Product updated successfully!');
     }
 
     public function destroy(Product $inventory)
     {
         $inventory->delete();
-        return redirect()->route('inventory.index')->with('success', 'Product deleted successfully.');
+        return redirect()->route('inventory.index')
+            ->with('success', 'Product deleted successfully!');
     }
 }
