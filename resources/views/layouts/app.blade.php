@@ -141,9 +141,21 @@
                     </div>
                 </div>
 
-                <a href="{{ route('suppliers.index') }}" class="flex items-center p-3 rounded-lg hover:bg-green-600 hover:scale-105 transition shadow-sm {{ request()->routeIs('suppliers.*') ? 'bg-green-600' : '' }}">
-                    <span class="material-icons mr-2">local_shipping</span> Suppliers
-                </a>
+                <!-- Supplier Transaction Dropdown -->
+                <div class="dropdown">
+                    <a href="#" class="flex items-center p-3 rounded-lg hover:bg-green-600 hover:scale-105 transition shadow-sm">
+                        <span class="material-icons mr-2">local_shipping</span> Supplier Transaction
+                        <span class="material-icons ml-auto text-sm dropdown-arrow">expand_more</span>
+                    </a>
+                    <div class="dropdown-content">
+                        <a href="{{ route('suppliers.index') }}" class="dropdown-item {{ request()->routeIs('suppliers.*') ? 'bg-green-600' : '' }}">
+                            <span class="material-icons mr-2" style="font-size: 18px;">list_alt</span> All Suppliers
+                        </a>
+                        <a href="{{ route('supplier.transactions') }}" class="dropdown-item {{ request()->routeIs('supplier.transactions') ? 'bg-green-600' : '' }}">
+                            <span class="material-icons mr-2" style="font-size: 18px;">receipt_long</span> Transactions
+                        </a>
+                    </div>
+                </div>
             @endif
 
             @if(in_array(auth()->user()->role, ['admin', 'cashier']))
@@ -173,13 +185,12 @@
                     <span class="material-icons mr-2">manage_accounts</span> All Users
                 </a>
                 
-                <!-- Create Manager with Dropdown (MOVED UP) -->
+                <!-- Create Manager with Dropdown -->
                 <div class="dropdown">
                     <a href="{{ route('users.create-manager') }}" class="flex items-center p-3 rounded-lg hover:bg-green-600 hover:scale-105 transition shadow-sm {{ request()->routeIs('users.create-manager') || request()->routeIs('users.store-manager') ? 'bg-green-600' : '' }}">
                         <span class="material-icons mr-2">admin_panel_settings</span> Create Manager
                         <span class="material-icons ml-auto text-sm dropdown-arrow">expand_more</span>
                     </a>
-                    <!-- Dropdown Content - List of Managers -->
                     <div class="dropdown-content">
                         <a href="{{ route('users.list-managers') }}" class="dropdown-item {{ request()->routeIs('users.list-managers') ? 'bg-green-600' : '' }}">
                             <span class="material-icons mr-2" style="font-size: 18px;">people</span> 
@@ -188,13 +199,12 @@
                     </div>
                 </div>
                 
-                <!-- Create Cashier with Dropdown (MOVED DOWN) -->
+                <!-- Create Cashier with Dropdown -->
                 <div class="dropdown">
                     <a href="{{ route('users.create-cashier') }}" class="flex items-center p-3 rounded-lg hover:bg-green-600 hover:scale-105 transition shadow-sm {{ request()->routeIs('users.create-cashier') || request()->routeIs('users.store-cashier') ? 'bg-green-600' : '' }}">
                         <span class="material-icons mr-2">person_add</span> Create Cashier
                         <span class="material-icons ml-auto text-sm dropdown-arrow">expand_more</span>
                     </a>
-                    <!-- Dropdown Content - List of Cashiers -->
                     <div class="dropdown-content">
                         <a href="{{ route('users.list-cashiers') }}" class="dropdown-item {{ request()->routeIs('users.list-cashiers') ? 'bg-green-600' : '' }}">
                             <span class="material-icons mr-2" style="font-size: 18px;">people</span> 
@@ -203,8 +213,8 @@
                     </div>
                 </div>
 
-                <!-- Employees (NEW) -->
-                <a href="#" class="flex items-center p-3 rounded-lg hover:bg-green-600 hover:scale-105 transition shadow-sm">
+                <!-- Employees -->
+                <a href="{{ route('employees.index') }}" class="flex items-center p-3 rounded-lg hover:bg-green-600 hover:scale-105 transition shadow-sm {{ request()->routeIs('employees.index') ? 'bg-green-600' : '' }}">
                     <span class="material-icons mr-2">badge</span> Employees
                 </a>
             @endif
@@ -212,7 +222,6 @@
 
         <!-- User Info & Logout Button at Bottom -->
         <div class="mt-auto pt-4 border-t border-green-600">
-            <!-- Display current user role -->
             <div class="text-xs text-green-200 mb-2 px-2">
                 <p class="font-semibold">{{ auth()->user()->fname }} {{ auth()->user()->lname }}</p>
                 <p class="text-green-300">{{ ucfirst(auth()->user()->role) }}</p>

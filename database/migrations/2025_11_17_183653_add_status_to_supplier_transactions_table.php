@@ -12,9 +12,14 @@ return new class extends Migration
             $table->id('Supply_transac_ID');
             $table->unsignedBigInteger('Supplier_ID');
             $table->unsignedBigInteger('Product_ID');
-            $table->integer('quantity_supplier');
+            $table->integer('quantity_units');
+            $table->decimal('quantity_kilos', 10, 2);
             $table->date('supply_date');
             $table->decimal('total_cost', 10, 2);
+
+            // Add the status column
+            $table->enum('status', ['pending', 'completed', 'cancelled', 'paid'])->default('pending');
+
             $table->timestamps();
 
             $table->foreign('Supplier_ID')->references('Supplier_ID')->on('suppliers')->onDelete('cascade');

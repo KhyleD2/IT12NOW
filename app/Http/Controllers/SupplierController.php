@@ -3,10 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Supplier;
+use App\Models\SupplierTransaction;
 use Illuminate\Http\Request;
 
 class SupplierController extends Controller
 {
+    // -----------------------------
+    // SUPPLIERS CRUD
+    // -----------------------------
     public function index()
     {
         $suppliers = Supplier::all();
@@ -56,4 +60,14 @@ class SupplierController extends Controller
         $supplier->delete();
         return redirect()->route('suppliers.index')->with('success', 'Supplier deleted successfully.');
     }
+
+    // -----------------------------
+    // SUPPLIER TRANSACTIONS
+    // -----------------------------
+    public function transactions()
+{
+    $transactions = SupplierTransaction::with(['supplier', 'product'])->latest()->get();
+    return view('suppliers.transactions', compact('transactions'));
+}
+
 }

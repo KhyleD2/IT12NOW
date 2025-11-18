@@ -7,6 +7,7 @@ use App\Models\SalesTransaction;
 use App\Models\Customer;
 use App\Models\User;
 use App\Models\Product;
+use Carbon\Carbon;
 
 class SalesController extends Controller
 {
@@ -25,8 +26,14 @@ class SalesController extends Controller
     public function create()
     {
         $customers = Customer::all();
-        $products = Product::all();
         $users = User::all();
+
+        // Only include products that are not expired and have stock
+        $products = Product::where(function($query) {
+            $query->whereNull('expiry_date')
+                  ->orWhere('expiry_date', '>=', Carbon::today());
+        })->where('Quantity_in_Stock', '>', 0)->get();
+
         return view('sales.create', compact('customers', 'products', 'users'));
     }
 
@@ -43,6 +50,17 @@ class SalesController extends Controller
             'products.*.Quantity' => 'required|numeric|min:0.1',
             'products.*.Price' => 'required|numeric|min:0',
         ]);
+
+        // Check for expired or out-of-stock products
+        foreach ($request->products as $item) {
+            $product = Product::find($item['Product_ID']);
+            if (!$product) {
+                return back()->withErrors('Invalid product selected.');
+            }
+            if (($product->expiry_date && $product->expiry_date < Carbon::today()) || $product->Quantity_in_Stock <= 0) {
+                return back()->withErrors('One of the selected products is expired or out of stock and cannot be sold.');
+            }
+        }
 
         $sale = SalesTransaction::create([
             'Customer_ID' => $request->Customer_ID,
@@ -66,8 +84,14 @@ class SalesController extends Controller
     public function edit(SalesTransaction $sale)
     {
         $customers = Customer::all();
-        $products = Product::all();
         $users = User::all();
+
+        // Only include products that are not expired and have stock
+        $products = Product::where(function($query) {
+            $query->whereNull('expiry_date')
+                  ->orWhere('expiry_date', '>=', Carbon::today());
+        })->where('Quantity_in_Stock', '>', 0)->get();
+
         $sale->load('products'); // eager load products
         return view('sales.edit', compact('sale', 'customers', 'products', 'users'));
     }
@@ -85,6 +109,17 @@ class SalesController extends Controller
             'products.*.Quantity' => 'required|numeric|min:0.1',
             'products.*.Price' => 'required|numeric|min:0',
         ]);
+
+        // Check for expired or out-of-stock products
+        foreach ($request->products as $item) {
+            $product = Product::find($item['Product_ID']);
+            if (!$product) {
+                return back()->withErrors('Invalid product selected.');
+            }
+            if (($product->expiry_date && $product->expiry_date < Carbon::today()) || $product->Quantity_in_Stock <= 0) {
+                return back()->withErrors('One of the selected products is expired or out of stock and cannot be sold.');
+            }
+        }
 
         $sale->update([
             'Customer_ID' => $request->Customer_ID,

@@ -11,8 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('returned_items', function (Blueprint $table) {
+        Schema::create('cashiers', function (Blueprint $table) {
             $table->id();
+
+            // Form fields
+            $table->string('first_name');
+            $table->string('last_name');
+            $table->string('contact_number')->nullable();
+            $table->string('email')->unique();
+            $table->string('password');
+
             $table->timestamps();
         });
     }
@@ -22,6 +30,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('returned_items');
+        Schema::dropIfExists('cashiers');
     }
 };

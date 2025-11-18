@@ -57,25 +57,25 @@
                 <select name="products[0][Product_ID]" class="flex-1 border p-2 rounded focus:ring-2 focus:ring-green-500 product-select" required>
                     <option value="">Select Product</option>
                     @foreach($products as $product)
-                        <option value="{{ $product->Product_ID }}" data-price="{{ $product->Price_per_Kilo }}">
+                        @php
+                            $isExpired = $product->expiry_date && \Carbon\Carbon::parse($product->expiry_date)->lt(now());
+                            $outOfStock = $product->Quantity_in_Stock <= 0;
+                        @endphp
+                        <option value="{{ $product->Product_ID }}"
+                            data-price="{{ $product->unit_price }}"
+                            @if($isExpired || $outOfStock) disabled @endif
+                        >
                             {{ $product->Product_Name }} (Stock: {{ $product->Quantity_in_Stock }})
+                            @if($isExpired) - EXPIRED @endif
+                            @if($outOfStock) - OUT OF STOCK @endif
                         </option>
                     @endforeach
                 </select>
 
-                <!-- Quantity -->
                 <input type="number" name="products[0][Quantity]" placeholder="Quantity" class="w-24 border p-2 rounded focus:ring-2 focus:ring-green-500 quantity" min="0.1" step="0.1" required>
-
-                <!-- Kilo -->
                 <input type="number" name="products[0][Kilo]" placeholder="Kilo" class="w-24 border p-2 rounded focus:ring-2 focus:ring-green-500 kilo" min="0.1" step="0.1" required>
-
-                <!-- Price per Kilo -->
                 <input type="number" name="products[0][Price]" placeholder="Price per kg" class="w-24 border p-2 rounded focus:ring-2 focus:ring-green-500 price" min="0" step="0.01" required>
-
-                <!-- Total -->
                 <span class="w-24 text-gray-700 font-semibold total">0.00</span>
-
-                <!-- Remove -->
                 <button type="button" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded remove-btn">Remove</button>
             </div>
         </div>
@@ -103,7 +103,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const wrapper = document.getElementById('products-wrapper');
     const addBtn = document.getElementById('addProductBtn');
     const grandTotalSpan = document.getElementById('grandTotal');
-    let index = 1;
 
     function updateTotals() {
         let grandTotal = 0;
