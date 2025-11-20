@@ -1,23 +1,28 @@
 <?php
-// app/Models/StockIn.php
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class StockIn extends Model
 {
+    use HasFactory;
+
     protected $table = 'stock_ins';
-    protected $primaryKey = 'Stock_ID';
+    protected $primaryKey = 'StockIn_ID';
+    public $timestamps = true;
 
     protected $fillable = [
         'Product_ID',
+        'supplier_transaction_id',
         'date',
         'quantity',
         'price',
         'unit',
         'expiry_date',
-        'critical_level'
+        'critical_level',
+        'variety', // ADDED
     ];
 
     protected $casts = [
@@ -25,8 +30,15 @@ class StockIn extends Model
         'expiry_date' => 'date',
     ];
 
+    // Relationship to Product
     public function product()
     {
         return $this->belongsTo(Product::class, 'Product_ID', 'Product_ID');
+    }
+
+    // Relationship to SupplierTransaction
+    public function supplierTransaction()
+    {
+        return $this->belongsTo(SupplierTransaction::class, 'supplier_transaction_id', 'Supply_transac_ID');
     }
 }

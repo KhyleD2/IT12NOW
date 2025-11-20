@@ -1,96 +1,98 @@
 <?php
+// app/Http/Controllers/ProductController.php
 
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Product;
+use App\Models\Supplier;
+use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
-    // Show all products
     public function index()
     {
-        $products = Product::all();
+        $products = Product::with('supplier')->get();
         return view('products.index', compact('products'));
     }
 
-    // Show create form
     public function create()
     {
-        return view('products.create');
+        $suppliers = Supplier::all();
+        return view('products.create', compact('suppliers'));
     }
 
-    // Store new product
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string',
-            'price' => 'required|numeric|min:0'
+            'Product_Name' => 'required|string|max:255',
+            'Category' => 'required|string|max:255',
+            'variety' => 'nullable|string|max:255',
+            'description' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'Supplier_ID' => 'required|exists:suppliers,Supplier_ID',
+            'supplier_price' => 'required|numeric|min:0',
+            'unit_price' => 'required|numeric|min:0',
+            'reorder_level' => 'required|integer|min:0',
         ]);
 
-        Product::create($request->only('name','price'));
+        $data = $request->except('image');
+        $data['Quantity_in_Stock'] = 0;
 
-        return redirect()->route('products.index')->with('success', 'Product added successfully!');
+        if ($request->hasFile('image')) {
+            $data['image'] = $request->file('image')->store('products', 'public');
+        }
+
+        Product::create($data);
+
+        return redirect()->route('products.index')
+            ->with('success', 'Product created successfully. Go to Stock-In to add inventory.');
     }
 
-    // Edit product form
     public function edit(Product $product)
     {
-        return view('products.edit', compact('product'));
+        $suppliers = Supplier::all();
+        return view('products.edit', compact('product', 'suppliers'));
     }
 
-    // Update product
     public function update(Request $request, Product $product)
     {
         $request->validate([
-            'name' => 'required|string',
-            'price' => 'required|numeric|min:0'
+            'Product_Name' => 'required|string|max:255',
+            'Category' => 'required|string|max:255',
+            'variety' => 'nullable|string|max:255',
+            'description' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'Supplier_ID' => 'required|exists:suppliers,Supplier_ID',
+            'supplier_price' => 'required|numeric|min:0',
+            'unit_price' => 'required|numeric|min:0',
+            'reorder_level' => 'required|integer|min:0',
         ]);
 
-        $product->update($request->only('name','price'));
-        return redirect()->route('products.index')->with('success', 'Product updated successfully!');
+        $data = $request->except('image');
+
+        if ($request->hasFile('image')) {
+            if ($product->image) {
+                Storage::disk('public')->delete($product->image);
+            }
+            $data['image'] = $request->file('image')->store('products', 'public');
+        }
+
+        $product->update($data);
+
+        return redirect()->route('products.index')
+            ->with('success', 'Product updated successfully.');
     }
 
-    // Delete product
     public function destroy(Product $product)
     {
+        if ($product->image) {
+            Storage::disk('public')->delete($product->image);
+        }
+        
         $product->delete();
-        return redirect()->route('products.index')->with('success', 'Product deleted successfully!');
+
+        return redirect()->route('products.index')
+            ->with('success', 'Product deleted successfully.');
     }
-public function sales()
-{
-    return $this->hasMany(Sale::class, 'Product_ID', 'Product_ID');
-}
-
-public function returnedItems()
-{
-    return $this->hasMany(ReturnedItem::class, 'Product_ID', 'Product_ID');
-}
-
-public function getIsLowStockAttribute()
-{
-    return $this->Quantity_in_Stock <= $this->reorder_level;
-}
-
-public function getIsExpiringSoonAttribute()
-{
-    if (!$this->expiry_date) return false;
-    return $this->expiry_date->isBetween(now(), now()->addDays(7));
-}
-
-public function scopeLowStock($query)
-{
-    return $query->whereRaw('Quantity_in_Stock <= reorder_level');
-}
-
-public function scopeExpiringSoon($query)
-{
-    return $query->whereBetween('expiry_date', [now(), now()->addDays(7)]);
-}
-
-public function scopeByCategory($query, $category)
-{
-    return $query->where('Category', $category);
-}
-
 }

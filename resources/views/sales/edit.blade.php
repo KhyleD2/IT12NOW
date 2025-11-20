@@ -155,6 +155,15 @@ document.addEventListener('DOMContentLoaded', () => {
         newRow.querySelectorAll('input').forEach(input => input.value = '');
         newRow.querySelector('select').value = '';
         newRow.querySelector('.total').textContent = '0.00';
+        
+        // Update name attributes with new index
+        const inputs = newRow.querySelectorAll('input, select');
+        inputs.forEach(input => {
+            if(input.name) {
+                input.name = input.name.replace(/\[\d+\]/, '[' + productIndex + ']');
+            }
+        });
+        
         wrapper.appendChild(newRow);
         productIndex++;
     });
@@ -165,6 +174,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if(wrapper.querySelectorAll('.product-row').length > 1) {
                 e.target.closest('.product-row').remove();
                 updateTotals();
+            } else {
+                alert('You must have at least one product in the sale.');
             }
         }
     });

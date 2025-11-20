@@ -4,6 +4,16 @@
 <div class="max-w-3xl mx-auto p-6 bg-gray-100 rounded-lg shadow-md mt-10">
     <h1 class="text-3xl font-bold text-gray-800 mb-6">Edit Supplier Transaction</h1>
 
+    @if ($errors->any())
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <ul class="list-disc list-inside">
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+    @endif
+
     <form method="POST" action="{{ route('supplier-transactions.update', $supplier_transaction->Supply_transac_ID) }}" class="bg-white p-6 rounded-lg shadow space-y-4">
         @csrf
         @method('PUT')
@@ -30,18 +40,53 @@
             </select>
         </div>
 
-        <!-- Quantity in Kilos -->
+        <!-- Quantity Units -->
         <div>
-            <label class="block text-gray-700 font-semibold mb-1">Quantity (Kilos)</label>
-            <input type="number" step="0.01" name="quantity_supplier" id="quantity-kilo" class="w-full p-3 border border-gray-300 rounded" required
-                value="{{ $supplier_transaction->quantity_supplier }}">
+            <label class="block text-gray-700 font-semibold mb-1">Quantity Units</label>
+            <input type="number" name="quantity_units" id="quantity-units" min="0" step="1" 
+                   value="{{ old('quantity_units', $supplier_transaction->quantity_units ?? 0) }}"
+                   class="w-full p-3 border border-gray-300 rounded" required>
         </div>
 
-        <!-- Total Cost -->
+        <!-- Quantity Kilos -->
         <div>
-            <label class="block text-gray-700 font-semibold mb-1">Total Cost</label>
-            <input type="number" step="0.01" name="total_cost" id="total-cost" class="w-full p-3 border border-gray-300 rounded" readonly
-                value="{{ $supplier_transaction->total_cost }}">
+            <label class="block text-gray-700 font-semibold mb-1">Quantity Kilos</label>
+            <input type="number" name="quantity_kilos" id="quantity-kilos" step="0.01" min="0" 
+                   value="{{ old('quantity_kilos', $supplier_transaction->quantity_kilos ?? 0) }}"
+                   class="w-full p-3 border border-gray-300 rounded" required>
+        </div>
+
+        <!-- Price per Kg -->
+        <div>
+            <label class="block text-gray-700 font-semibold mb-1">Price per Kg</label>
+            <div class="relative">
+                <span class="absolute left-3 top-3 text-gray-600 font-semibold">₱</span>
+                <input type="number" name="supplier_price" id="supplier-price" step="0.01" min="0" 
+                       value="{{ old('supplier_price', $supplier_transaction->supplier_price ?? 0) }}"
+                       class="w-full p-3 pl-8 border border-gray-300 rounded" required>
+            </div>
+        </div>
+
+        <!-- Supply Date -->
+        <div>
+            <label class="block text-gray-700 font-semibold mb-1">Supply Date</label>
+            <input type="date" name="supply_date" id="supply-date"
+                   value="{{ old('supply_date', $supplier_transaction->supply_date->format('Y-m-d')) }}" 
+                   class="w-full p-3 border border-gray-300 rounded" required>
+        </div>
+
+        <!-- Status -->
+        <div>
+            <label class="block text-gray-700 font-semibold mb-1">Status</label>
+            <select name="status" id="status-select" class="w-full p-3 border border-gray-300 rounded" required>
+                <option value="pending" {{ old('status', $supplier_transaction->status) == 'pending' ? 'selected' : '' }}>Pending</option>
+                <option value="completed" {{ old('status', $supplier_transaction->status) == 'completed' ? 'selected' : '' }}>Completed</option>
+                <option value="cancelled" {{ old('status', $supplier_transaction->status) == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
+                <option value="paid" {{ old('status', $supplier_transaction->status) == 'paid' ? 'selected' : '' }}>Paid</option>
+            </select>
+            <p class="text-xs text-green-600 mt-1 font-semibold">
+                ⚠️ <strong>Note:</strong> Selecting "Completed" will automatically add this quantity to your stock inventory!
+            </p>
         </div>
 
         <!-- Buttons -->
@@ -55,8 +100,7 @@
 <script>
     const supplierSelect = document.getElementById('supplier-select');
     const productSelect = document.getElementById('product-select');
-    const quantityInput = document.getElementById('quantity-kilo');
-    const totalCostInput = document.getElementById('total-cost');
+    const statusSelect = document.getElementById('status-select');
 
     let productsBySupplier = @json($productsBySupplier);
 
@@ -68,7 +112,6 @@
             productsBySupplier[supplierId].forEach(product => {
                 const option = document.createElement('option');
                 option.value = product.Product_ID;
-                option.dataset.price = product.price;
                 option.textContent = product.name;
 
                 // Preselect current product
@@ -79,20 +122,35 @@
                 productSelect.appendChild(option);
             });
         }
-        calculateTotal();
-    }
-
-    function calculateTotal() {
-        const price = parseFloat(productSelect.selectedOptions[0]?.dataset.price || 0);
-        const quantity = parseFloat(quantityInput.value || 0);
-        totalCostInput.value = (price * quantity).toFixed(2);
     }
 
     // Initial load
     updateProducts();
 
     supplierSelect.addEventListener('change', updateProducts);
-    productSelect.addEventListener('change', calculateTotal);
-    quantityInput.addEventListener('input', calculateTotal);
+
+    // Show confirmation when selecting "Completed" status
+    statusSelect.addEventListener('change', function() {
+        if(this.value === 'completed') {
+            const quantityUnits = parseFloat(document.getElementById('quantity-units').value) || 0;
+            const quantityKilos = parseFloat(document.getElementById('quantity-kilos').value) || 0;
+            const totalQty = quantityUnits + quantityKilos;
+            
+            if(totalQty > 0 && productSelect.value) {
+                const productName = productSelect.options[productSelect.selectedIndex].text;
+                const confirmation = confirm(
+                    `Stock will be automatically updated:\n\n` +
+                    `Product: ${productName}\n` +
+                    `Quantity: ${totalQty} kg\n\n` +
+                    `This will add the stock to your inventory.\n` +
+                    `Continue?`
+                );
+                
+                if (!confirmation) {
+                    this.value = 'pending';
+                }
+            }
+        }
+    });
 </script>
 @endsection

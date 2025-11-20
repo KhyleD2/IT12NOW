@@ -16,9 +16,9 @@ class Product extends Model
         'description',
         'image',
         'Supplier_ID',
-        'Quantity_in_Stock', // Will be auto-calculated from stock_ins
-        'unit_price',        // Will be auto-calculated from stock_ins
-        'expiry_date',       // Will be auto-calculated from stock_ins
+        'Quantity_in_Stock',
+        'unit_price',
+        'expiry_date',
         'reorder_level'
     ];
 
@@ -36,13 +36,11 @@ class Product extends Model
         return $this->hasMany(StockIn::class, 'Product_ID', 'Product_ID');
     }
 
-    // Calculate total stock from all stock-in records
     public function getTotalStockAttribute()
     {
         return $this->stockIns()->sum('quantity');
     }
 
-    // Get earliest expiry date from stock-ins
     public function getEarliestExpiryAttribute()
     {
         return $this->stockIns()
@@ -52,26 +50,24 @@ class Product extends Model
             ->first()?->expiry_date;
     }
 
-    // Update product summary from stock_ins
     public function updateFromStockIns()
-{
-    $totalQuantity = $this->stockIns()->sum('quantity');
-    
-    $earliestExpiry = $this->stockIns()
-        ->whereNotNull('expiry_date')
-        ->where('quantity', '>', 0)
-        ->orderBy('expiry_date', 'asc')
-        ->first();
-    
-    // Get the latest stock-in price
-    $latestStockIn = $this->stockIns()
-        ->orderBy('date', 'desc')
-        ->first();
+    {
+        $totalQuantity = $this->stockIns()->sum('quantity');
+        
+        $earliestExpiry = $this->stockIns()
+            ->whereNotNull('expiry_date')
+            ->where('quantity', '>', 0)
+            ->orderBy('expiry_date', 'asc')
+            ->first();
+        
+        $latestStockIn = $this->stockIns()
+            ->orderBy('date', 'desc')
+            ->first();
 
-    $this->update([
-        'Quantity_in_Stock' => $totalQuantity,
-        'expiry_date' => $earliestExpiry ? $earliestExpiry->expiry_date : null,
-        'unit_price' => $latestStockIn ? $latestStockIn->price : $this->unit_price, // Add this line
-    ]);
-}
+        $this->update([
+            'Quantity_in_Stock' => $totalQuantity,
+            'expiry_date' => $earliestExpiry ? $earliestExpiry->expiry_date : null,
+            'unit_price' => $latestStockIn ? $latestStockIn->price : $this->unit_price,
+        ]);
+    }
 }

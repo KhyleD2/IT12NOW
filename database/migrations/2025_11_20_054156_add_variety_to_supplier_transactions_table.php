@@ -6,20 +6,17 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    public function up(): void
+    public function up()
     {
         Schema::table('supplier_transactions', function (Blueprint $table) {
-            // Only add the status column if it doesn't exist
-            if (!Schema::hasColumn('supplier_transactions', 'status')) {
-                $table->enum('status', ['pending', 'completed', 'cancelled', 'paid'])->default('pending');
-            }
+            $table->string('variety')->nullable()->after('Product_ID');
         });
     }
 
-    public function down(): void
+    public function down()
     {
         Schema::table('supplier_transactions', function (Blueprint $table) {
-            $table->dropColumn('status');
+            $table->dropColumn('variety');
         });
     }
 };

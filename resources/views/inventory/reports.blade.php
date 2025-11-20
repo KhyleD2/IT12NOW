@@ -36,12 +36,12 @@
         <!-- Total Products -->
         <div class="bg-white rounded-lg shadow-lg p-6 border-l-4 border-blue-500">
             <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm text-gray-600 font-medium">Total Products</p>
-                    <p class="text-3xl font-bold text-gray-800 mt-2">{{ $totalProducts }}</p>
-                </div>
                 <div class="bg-blue-100 p-4 rounded-lg">
                     <span class="material-icons text-blue-600 text-3xl">inventory_2</span>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm text-gray-600 font-medium">Total Products</p>
+                    <p class="text-3xl font-bold text-gray-800 mt-2">{{ $totalProducts }}</p>
                 </div>
             </div>
         </div>
@@ -49,12 +49,12 @@
         <!-- Total Stock Value -->
         <div class="bg-white rounded-lg shadow-lg p-6 border-l-4 border-green-500">
             <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm text-gray-600 font-medium">Stock Value</p>
-                    <p class="text-3xl font-bold text-gray-800 mt-2">₱{{ number_format($totalStockValue, 2) }}</p>
-                </div>
                 <div class="bg-green-100 p-4 rounded-lg">
                     <span class="material-icons text-green-600 text-3xl">attach_money</span>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm text-gray-600 font-medium">Stock Value</p>
+                    <p class="text-3xl font-bold text-gray-800 mt-2">₱{{ number_format($totalStockValue, 2) }}</p>
                 </div>
             </div>
         </div>
@@ -62,12 +62,12 @@
         <!-- Low Stock Alert -->
         <div class="bg-white rounded-lg shadow-lg p-6 border-l-4 border-red-500">
             <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm text-gray-600 font-medium">Low Stock Items</p>
-                    <p class="text-3xl font-bold text-gray-800 mt-2">{{ $lowStockCount }}</p>
-                </div>
                 <div class="bg-red-100 p-4 rounded-lg">
                     <span class="material-icons text-red-600 text-3xl">warning</span>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm text-gray-600 font-medium">Low Stock Items</p>
+                    <p class="text-3xl font-bold text-gray-800 mt-2">{{ $lowStockCount }}</p>
                 </div>
             </div>
         </div>
@@ -75,12 +75,12 @@
         <!-- Total Sales -->
         <div class="bg-white rounded-lg shadow-lg p-6 border-l-4 border-purple-500">
             <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm text-gray-600 font-medium">Total Sales</p>
-                    <p class="text-3xl font-bold text-gray-800 mt-2">₱{{ number_format($totalSales, 2) }}</p>
-                </div>
                 <div class="bg-purple-100 p-4 rounded-lg">
                     <span class="material-icons text-purple-600 text-3xl">trending_up</span>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm text-gray-600 font-medium">Total Sales</p>
+                    <p class="text-3xl font-bold text-gray-800 mt-2">₱{{ number_format($totalSales, 2) }}</p>
                 </div>
             </div>
         </div>

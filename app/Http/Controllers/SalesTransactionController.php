@@ -83,16 +83,55 @@ class SalesTransactionController extends Controller
         return view('sales.edit', compact('sale', 'customers', 'products', 'users'));
     }
 
-    // Update transaction (status only)
+    // Update transaction - FIXED: Now handles full transaction update
     public function update(Request $request, SalesTransaction $sale)
     {
         $request->validate([
-            'status' => 'required|in:pending,paid',
+            'Customer_ID' => 'required|exists:customers,Customer_ID',
+            'User_ID' => 'required|exists:users,User_ID',
+            'payment_method' => 'required|in:Cash,GCash',
+            'products.*.Product_ID' => 'required|exists:products,Product_ID',
+            'products.*.Quantity' => 'required|numeric|min:0.1',
+            'products.*.Kilo' => 'nullable|numeric|min:0.1',
+            'products.*.Price' => 'required|numeric|min:0',
+            'status' => 'nullable|in:pending,paid', // Made nullable
         ]);
 
-        $sale->update(['status' => $request->status]);
+        // Update basic transaction info
+        $sale->update([
+            'Customer_ID' => $request->Customer_ID,
+            'User_ID' => $request->User_ID,
+            'payment_method' => $request->payment_method,
+            'status' => $request->status ?? $sale->status, // Keep existing status if not provided
+        ]);
 
-        return redirect()->route('sales.index')->with('success', 'Transaction status updated.');
+        // If products are being updated, handle transaction details
+        if ($request->has('products')) {
+            // Delete old details
+            $sale->details()->delete();
+            
+            // Calculate new total
+            $total = 0;
+            
+            // Create new details
+            foreach ($request->products as $p) {
+                $quantity = $p['Kilo'] ?? $p['Quantity'];
+                $lineTotal = $quantity * $p['Price'];
+                $total += $lineTotal;
+                
+                TransactionDetail::create([
+                    'transaction_ID' => $sale->transaction_ID,
+                    'Product_ID' => $p['Product_ID'],
+                    'Quantity' => $quantity,
+                    'unit_price' => $p['Price'],
+                ]);
+            }
+            
+            // Update total amount
+            $sale->update(['total_amount' => $total]);
+        }
+
+        return redirect()->route('sales.index')->with('success', 'Transaction updated successfully.');
     }
 
     // Mark pending transaction as paid and redirect to print receipt
@@ -122,5 +161,40 @@ class SalesTransactionController extends Controller
         $sale->delete();
 
         return redirect()->route('sales.index')->with('success', 'Transaction deleted successfully.');
+    }
+
+    // Get transaction details for modal view (JSON response)
+    public function details(SalesTransaction $sale)
+    {
+        $sale->load(['customer', 'user', 'details.product']);
+        
+        // Format the response
+        $response = [
+            'transaction_ID' => $sale->transaction_ID,
+            'receipt_number' => $sale->receipt_number,
+            'transaction_date' => $sale->transaction_date,
+            'total_amount' => $sale->total_amount,
+            'payment_method' => $sale->payment_method,
+            'status' => $sale->status,
+            'customer' => [
+                'Customer_Name' => $sale->customer->Customer_Name
+            ],
+            'user' => [
+                'fname' => $sale->user->fname,
+                'lname' => $sale->user->lname
+            ],
+            'details' => $sale->details->map(function($detail) {
+                return [
+                    'Quantity' => $detail->Quantity,
+                    'unit_price' => $detail->unit_price,
+                    'product' => [
+                        'Product_Name' => $detail->product->Product_Name . 
+                            ($detail->product->variety ? ' - ' . $detail->product->variety : '')
+                    ]
+                ];
+            })
+        ];
+        
+        return response()->json($response);
     }
 }

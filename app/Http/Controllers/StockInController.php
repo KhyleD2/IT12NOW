@@ -1,11 +1,12 @@
 <?php
-// app/Http/Controllers/StockInController.php
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\Request;
 use App\Models\StockIn;
 use App\Models\Product;
-use Illuminate\Http\Request;
+use App\Models\SupplierTransaction;
+use Illuminate\Support\Facades\DB;
 
 class StockInController extends Controller
 {
@@ -20,33 +21,94 @@ class StockInController extends Controller
     public function create()
     {
         $products = Product::with('supplier')->get();
-        return view('stockins.create', compact('products'));
+        
+        // Get latest COMPLETED supplier transactions with remaining quantity
+        $latestSupplierTransactions = [];
+        
+        foreach ($products as $product) {
+            // Find the most recent completed/paid transaction
+            $latest = SupplierTransaction::where('Product_ID', $product->Product_ID)
+                ->whereIn('status', ['completed', 'paid'])
+                ->latest('Supply_transac_ID')
+                ->first();
+            
+            if ($latest) {
+                // FIXED: Only use quantity_units, not adding quantity_kilos
+                $suppliedQty = (float)$latest->quantity_units;
+                
+                // Calculate how much has already been stocked in from THIS SPECIFIC transaction
+                $alreadyStockedQty = StockIn::where('supplier_transaction_id', $latest->Supply_transac_ID)
+                    ->sum('quantity');
+                
+                // Calculate remaining quantity available for stock-in
+                $remainingQty = $suppliedQty - $alreadyStockedQty;
+                
+                // Only show if there's remaining quantity
+                if ($remainingQty > 0) {
+                    // Calculate price per kg from supplier transaction
+                    $pricePerKg = $suppliedQty > 0 ? ($latest->total_cost / $suppliedQty) : 0;
+                    
+                    $latestSupplierTransactions[$product->Product_ID] = [
+                        'quantity' => $remainingQty,
+                        'original_quantity' => $suppliedQty,
+                        'already_stocked' => $alreadyStockedQty,
+                        'price' => round($pricePerKg, 2),
+                        'date' => $latest->supply_date,
+                        'transaction_id' => $latest->Supply_transac_ID,
+                    ];
+                }
+            }
+        }
+        
+        return view('stockins.create', compact('products', 'latestSupplierTransactions'));
     }
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $request->validate([
             'Product_ID' => 'required|exists:products,Product_ID',
             'date' => 'required|date',
-            'quantity' => 'required|integer|min:1',
+            'quantity' => 'required|numeric|min:0.01',
             'price' => 'required|numeric|min:0',
             'unit' => 'required|string',
-            'expiry_date' => 'nullable|date|after:today',
-            'critical_level' => 'required|integer|min:0'
+            'expiry_date' => 'nullable|date',
+            'critical_level' => 'required|integer|min:0',
+            'supplier_transaction_id' => 'nullable|exists:supplier_transactions,Supply_transac_ID',
         ]);
 
-        // Create stock-in record
-        $stockIn = StockIn::create($validated);
+        // SERVER-SIDE VALIDATION: Check remaining quantity if linked to supplier transaction
+        if ($request->supplier_transaction_id) {
+            $transaction = SupplierTransaction::findOrFail($request->supplier_transaction_id);
+            
+            // FIXED: Only use quantity_units, not adding quantity_kilos
+            $suppliedQty = (float)$transaction->quantity_units;
+            
+            // Calculate already stocked quantity from this specific transaction
+            $alreadyStockedQty = StockIn::where('supplier_transaction_id', $request->supplier_transaction_id)
+                ->sum('quantity');
+            
+            $remainingQty = $suppliedQty - $alreadyStockedQty;
+            
+            if ($request->quantity > $remainingQty) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors([
+                        'quantity' => 'Quantity (' . $request->quantity . ' kg) exceeds remaining quantity (' . round($remainingQty, 2) . ' kg). Already stocked: ' . round($alreadyStockedQty, 2) . ' kg out of ' . round($suppliedQty, 2) . ' kg supplied.'
+                    ]);
+            }
+        }
 
-        // Update product totals
-        $product = Product::find($validated['Product_ID']);
+        // Create the stock-in record with supplier transaction link
+        StockIn::create($request->all());
+
+        // Update product stock in inventory
+        $product = Product::findOrFail($request->Product_ID);
         $product->updateFromStockIns();
 
         return redirect()->route('stockins.index')
-            ->with('success', 'Stock added successfully!');
+            ->with('success', 'Stock added successfully and inventory updated! Quantity: ' . $request->quantity . ' kg');
     }
 
-    // ADD THESE NEW METHODS
     public function edit(StockIn $stockin)
     {
         $products = Product::with('supplier')->get();
@@ -55,35 +117,24 @@ class StockInController extends Controller
 
     public function update(Request $request, StockIn $stockin)
     {
-        $validated = $request->validate([
+        $request->validate([
             'Product_ID' => 'required|exists:products,Product_ID',
             'date' => 'required|date',
-            'quantity' => 'required|integer|min:1',
+            'quantity' => 'required|numeric|min:0',
             'price' => 'required|numeric|min:0',
             'unit' => 'required|string',
-            'expiry_date' => 'nullable|date|after:today',
-            'critical_level' => 'required|integer|min:0'
+            'expiry_date' => 'nullable|date',
+            'critical_level' => 'required|integer|min:0',
         ]);
 
-        $oldProductId = $stockin->Product_ID;
-        
-        // Update stock-in record
-        $stockin->update($validated);
+        $stockin->update($request->all());
 
-        // Update the old product if product was changed
-        if ($oldProductId != $validated['Product_ID']) {
-            $oldProduct = Product::find($oldProductId);
-            if ($oldProduct) {
-                $oldProduct->updateFromStockIns();
-            }
-        }
-
-        // Update the new/current product
-        $product = Product::find($validated['Product_ID']);
+        // Update product stock
+        $product = Product::findOrFail($request->Product_ID);
         $product->updateFromStockIns();
 
         return redirect()->route('stockins.index')
-            ->with('success', 'Stock updated successfully!');
+            ->with('success', 'Stock updated successfully.');
     }
 
     public function destroy(StockIn $stockin)
@@ -91,13 +142,11 @@ class StockInController extends Controller
         $productId = $stockin->Product_ID;
         $stockin->delete();
 
-        // Update product totals after deletion
-        $product = Product::find($productId);
-        if ($product) {
-            $product->updateFromStockIns();
-        }
+        // Update product stock after deletion
+        $product = Product::findOrFail($productId);
+        $product->updateFromStockIns();
 
         return redirect()->route('stockins.index')
-            ->with('success', 'Stock record deleted successfully!');
+            ->with('success', 'Stock deleted successfully.');
     }
 }

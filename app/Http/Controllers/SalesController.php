@@ -48,17 +48,26 @@ class SalesController extends Controller
             'payment_method' => 'required|in:Cash,GCash',
             'products.*.Product_ID' => 'required|exists:products,Product_ID',
             'products.*.Quantity' => 'required|numeric|min:0.1',
+            'products.*.Kilo' => 'required|numeric|min:0.1',
             'products.*.Price' => 'required|numeric|min:0',
         ]);
 
-        // Check for expired or out-of-stock products
+        // Check for expired, out-of-stock products, and stock limits
         foreach ($request->products as $item) {
             $product = Product::find($item['Product_ID']);
             if (!$product) {
-                return back()->withErrors('Invalid product selected.');
+                return back()->withInput()->withErrors('Invalid product selected.');
             }
             if (($product->expiry_date && $product->expiry_date < Carbon::today()) || $product->Quantity_in_Stock <= 0) {
-                return back()->withErrors('One of the selected products is expired or out of stock and cannot be sold.');
+                return back()->withInput()->withErrors('One of the selected products is expired or out of stock and cannot be sold.');
+            }
+            
+            // Check if quantity exceeds available stock
+            $quantityToSell = $item['Kilo'] ?? $item['Quantity'];
+            if ($quantityToSell > $product->Quantity_in_Stock) {
+                return back()->withInput()->withErrors([
+                    'products' => "Cannot sell {$quantityToSell} kg of {$product->Product_Name}. Only {$product->Quantity_in_Stock} kg available in stock."
+                ]);
             }
         }
 
@@ -71,6 +80,7 @@ class SalesController extends Controller
         foreach ($request->products as $product) {
             $sale->products()->attach($product['Product_ID'], [
                 'Quantity' => $product['Quantity'],
+                'Kilo' => $product['Kilo'],
                 'Price' => $product['Price']
             ]);
         }
@@ -107,6 +117,7 @@ class SalesController extends Controller
             'payment_method' => 'required|in:Cash,GCash',
             'products.*.Product_ID' => 'required|exists:products,Product_ID',
             'products.*.Quantity' => 'required|numeric|min:0.1',
+            'products.*.Kilo' => 'required|numeric|min:0.1',
             'products.*.Price' => 'required|numeric|min:0',
         ]);
 
@@ -127,11 +138,12 @@ class SalesController extends Controller
             'payment_method' => $request->payment_method,
         ]);
 
-        // Sync products with quantity and price
+        // Sync products with quantity, kilo, and price
         $syncData = [];
         foreach ($request->products as $product) {
             $syncData[$product['Product_ID']] = [
                 'Quantity' => $product['Quantity'],
+                'Kilo' => $product['Kilo'],
                 'Price' => $product['Price']
             ];
         }

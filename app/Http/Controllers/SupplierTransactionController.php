@@ -1,4 +1,5 @@
 <?php
+// app/Http/Controllers/SupplierTransactionController.php
 
 namespace App\Http\Controllers;
 
@@ -6,10 +7,10 @@ use Illuminate\Http\Request;
 use App\Models\SupplierTransaction;
 use App\Models\Supplier;
 use App\Models\Product;
+use App\Models\StockIn;
 
 class SupplierTransactionController extends Controller
 {
-    /** Load supplier + product list for forms */
     private function loadSupplierProducts()
     {
         $suppliers = Supplier::with('products')->get();
@@ -20,9 +21,6 @@ class SupplierTransactionController extends Controller
                 return [
                     'Product_ID' => $product->Product_ID,
                     'name' => $product->Product_Name,
-                    'price' => $product->unit_price,
-                    'default_units' => $product->Quantity_in_Stock,
-                    'default_kilos' => $product->Quantity_in_Stock,
                 ];
             });
         }
@@ -30,7 +28,6 @@ class SupplierTransactionController extends Controller
         return compact('suppliers', 'productsBySupplier');
     }
 
-    /** INDEX */
     public function index()
     {
         $transactions = SupplierTransaction::with(['supplier', 'product'])
@@ -40,30 +37,28 @@ class SupplierTransactionController extends Controller
         return view('supplier_transactions.index', compact('transactions'));
     }
 
-    /** CREATE */
     public function create()
     {
         $data = $this->loadSupplierProducts();
         return view('supplier_transactions.create', $data);
     }
 
-    /** STORE */
     public function store(Request $request)
     {
         $request->validate([
             'Supplier_ID' => 'required|exists:suppliers,Supplier_ID',
             'Product_ID' => 'required|exists:products,Product_ID',
+            'supplier_price' => 'required|numeric|min:0',
             'quantity_units' => 'required|numeric|min:0',
             'quantity_kilos' => 'required|numeric|min:0',
             'supply_date' => 'required|date',
             'status' => 'required|in:pending,completed,cancelled',
         ]);
 
-        // Fetch product to compute total cost
-        $product = Product::findOrFail($request->Product_ID);
-        $total_cost = ($request->quantity_units + $request->quantity_kilos) * $product->unit_price;
+        // Calculate total_cost from manual price input
+        $total_cost = ($request->quantity_units + $request->quantity_kilos) * $request->supplier_price;
 
-        SupplierTransaction::create([
+        $transaction = SupplierTransaction::create([
             'Supplier_ID' => $request->Supplier_ID,
             'Product_ID' => $request->Product_ID,
             'quantity_units' => $request->quantity_units,
@@ -73,11 +68,18 @@ class SupplierTransactionController extends Controller
             'status' => $request->status,
         ]);
 
+        // REMOVED: Automatic stock-in creation when status is completed
+        // Just save the transaction, don't create stock-in or update inventory yet
+        
+        if ($request->status === 'completed') {
+            return redirect()->route('supplier.transactions')
+                ->with('success', 'Transaction completed! Please go to Stock In → Add Stock to update inventory.');
+        }
+
         return redirect()->route('supplier.transactions')
             ->with('success', 'Transaction added successfully.');
     }
 
-    /** EDIT */
     public function edit(SupplierTransaction $supplier_transaction)
     {
         $data = $this->loadSupplierProducts();
@@ -87,22 +89,24 @@ class SupplierTransactionController extends Controller
         );
     }
 
-    /** UPDATE */
     public function update(Request $request, SupplierTransaction $supplier_transaction)
     {
         $request->validate([
             'Supplier_ID' => 'required|exists:suppliers,Supplier_ID',
             'Product_ID' => 'required|exists:products,Product_ID',
+            'supplier_price' => 'required|numeric|min:0',
             'quantity_units' => 'required|numeric|min:0',
             'quantity_kilos' => 'required|numeric|min:0',
             'supply_date' => 'required|date',
             'status' => 'required|in:pending,completed,cancelled,paid',
         ]);
 
-        // Recompute cost
-        $product = Product::findOrFail($request->Product_ID);
-        $total_cost = ($request->quantity_units + $request->quantity_kilos) * $product->unit_price;
+        // Calculate total_cost from manual price input
+        $total_cost = ($request->quantity_units + $request->quantity_kilos) * $request->supplier_price;
 
+        // Get old status before update
+        $oldStatus = $supplier_transaction->status;
+        
         $supplier_transaction->update([
             'Supplier_ID' => $request->Supplier_ID,
             'Product_ID' => $request->Product_ID,
@@ -113,11 +117,18 @@ class SupplierTransactionController extends Controller
             'status' => $request->status,
         ]);
 
+        // REMOVED: Automatic stock-in creation when changing to completed
+        // Just update the transaction, don't create stock-in or update inventory
+        
+        if ($oldStatus !== 'completed' && $request->status === 'completed') {
+            return redirect()->route('supplier.transactions')
+                ->with('success', 'Transaction marked as completed! Please go to Stock In → Add Stock to update inventory.');
+        }
+
         return redirect()->route('supplier.transactions')
             ->with('success', 'Transaction updated successfully.');
     }
 
-    /** DELETE */
     public function destroy(SupplierTransaction $supplier_transaction)
     {
         $supplier_transaction->delete();
@@ -126,7 +137,6 @@ class SupplierTransactionController extends Controller
             ->with('success', 'Transaction deleted successfully.');
     }
 
-    /** MARK AS PAID */
     public function pay(SupplierTransaction $supplier_transaction)
     {
         if ($supplier_transaction->status !== 'pending') {
@@ -141,7 +151,6 @@ class SupplierTransactionController extends Controller
             ->with('success', 'Transaction marked as paid.');
     }
 
-    /** PRINT RECEIPT */
     public function printReceipt(SupplierTransaction $supplier_transaction)
     {
         $supplier_transaction->load(['supplier', 'product']);

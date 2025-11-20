@@ -1,4 +1,5 @@
 <?php
+// database/migrations/xxxx_xx_xx_add_supplier_price_to_supplier_transactions_table.php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -6,20 +7,17 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    public function up(): void
+    public function up()
     {
         Schema::table('supplier_transactions', function (Blueprint $table) {
-            // Only add the status column if it doesn't exist
-            if (!Schema::hasColumn('supplier_transactions', 'status')) {
-                $table->enum('status', ['pending', 'completed', 'cancelled', 'paid'])->default('pending');
-            }
+            $table->decimal('supplier_price', 10, 2)->default(0)->after('Product_ID');
         });
     }
 
-    public function down(): void
+    public function down()
     {
         Schema::table('supplier_transactions', function (Blueprint $table) {
-            $table->dropColumn('status');
+            $table->dropColumn('supplier_price');
         });
     }
 };

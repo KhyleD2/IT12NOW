@@ -8,7 +8,12 @@
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
     <div class="bg-white p-6 rounded-lg shadow-lg border-l-4 border-green-500">
         <div class="flex items-center justify-between">
-            <div>
+            <div class="bg-green-100 p-4 rounded-lg">
+                <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                </svg>
+            </div>
+            <div class="text-right">
                 <h3 class="text-gray-600 text-sm font-semibold uppercase">Total Products</h3>
                 <p class="text-3xl font-bold text-gray-800 mt-2">{{ $totalProducts ?? 0 }}</p>
                 @if(($lowStockProducts->count() ?? 0) > 0)
@@ -18,52 +23,47 @@
                     <p class="text-xs text-red-600">🚫 {{ $outOfStockCount }} out of stock</p>
                 @endif
             </div>
-            <div class="bg-green-100 p-4 rounded-lg">
-                <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                </svg>
-            </div>
         </div>
     </div>
 
     <div class="bg-white p-6 rounded-lg shadow-lg border-l-4 border-blue-500">
         <div class="flex items-center justify-between">
-            <div>
-                <h3 class="text-gray-600 text-sm font-semibold uppercase">Total Customers</h3>
-                <p class="text-3xl font-bold text-gray-800 mt-2">{{ $totalCustomers ?? 0 }}</p>
-            </div>
             <div class="bg-blue-100 p-4 rounded-lg">
                 <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
                 </svg>
+            </div>
+            <div class="text-right">
+                <h3 class="text-gray-600 text-sm font-semibold uppercase">Total Customers</h3>
+                <p class="text-3xl font-bold text-gray-800 mt-2">{{ $totalCustomers ?? 0 }}</p>
             </div>
         </div>
     </div>
 
     <div class="bg-white p-6 rounded-lg shadow-lg border-l-4 border-purple-500">
         <div class="flex items-center justify-between">
-            <div>
-                <h3 class="text-gray-600 text-sm font-semibold uppercase">Total Suppliers</h3>
-                <p class="text-3xl font-bold text-gray-800 mt-2">{{ $totalSuppliers ?? 0 }}</p>
-            </div>
             <div class="bg-purple-100 p-4 rounded-lg">
                 <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
                 </svg>
+            </div>
+            <div class="text-right">
+                <h3 class="text-gray-600 text-sm font-semibold uppercase">Total Suppliers</h3>
+                <p class="text-3xl font-bold text-gray-800 mt-2">{{ $totalSuppliers ?? 0 }}</p>
             </div>
         </div>
     </div>
 
     <div class="bg-white p-6 rounded-lg shadow-lg border-l-4 border-orange-500">
         <div class="flex items-center justify-between">
-            <div>
-                <h3 class="text-gray-600 text-sm font-semibold uppercase">Total Sales</h3>
-                <p class="text-3xl font-bold text-gray-800 mt-2">{{ $totalSales ?? 0 }}</p>
-            </div>
             <div class="bg-orange-100 p-4 rounded-lg">
                 <svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
                 </svg>
+            </div>
+            <div class="text-right">
+                <h3 class="text-gray-600 text-sm font-semibold uppercase">Total Sales</h3>
+                <p class="text-3xl font-bold text-gray-800 mt-2">{{ $totalSales ?? 0 }}</p>
             </div>
         </div>
     </div>
@@ -72,36 +72,42 @@
 <!-- Revenue Cards -->
 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
     <div class="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-lg shadow-xl text-white">
-        <div class="flex items-center justify-between mb-2">
-            <h3 class="font-bold text-lg">Today's Revenue</h3>
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="flex items-center justify-between">
+            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
+            <div class="text-right">
+                <h3 class="font-bold text-lg">Today's Revenue</h3>
+                <p class="text-4xl font-bold mt-1">₱{{ number_format($todayRevenue ?? 0, 2) }}</p>
+                <p class="text-blue-100 text-xs mt-2">{{ \Carbon\Carbon::now()->format('l, M d, Y') }}</p>
+            </div>
         </div>
-        <p class="text-4xl font-bold">₱{{ number_format($todayRevenue ?? 0, 2) }}</p>
-        <p class="text-blue-100 text-sm mt-2">{{ \Carbon\Carbon::now()->format('l, M d, Y') }}</p>
     </div>
 
     <div class="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-lg shadow-xl text-white">
-        <div class="flex items-center justify-between mb-2">
-            <h3 class="font-bold text-lg">This Week</h3>
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="flex items-center justify-between">
+            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
             </svg>
+            <div class="text-right">
+                <h3 class="font-bold text-lg">This Week</h3>
+                <p class="text-4xl font-bold mt-1">₱{{ number_format($weekRevenue ?? 0, 2) }}</p>
+                <p class="text-purple-100 text-xs mt-2">{{ \Carbon\Carbon::now()->startOfWeek()->format('M d') }} - {{ \Carbon\Carbon::now()->endOfWeek()->format('M d') }}</p>
+            </div>
         </div>
-        <p class="text-4xl font-bold">₱{{ number_format($weekRevenue ?? 0, 2) }}</p>
-        <p class="text-purple-100 text-sm mt-2">{{ \Carbon\Carbon::now()->startOfWeek()->format('M d') }} - {{ \Carbon\Carbon::now()->endOfWeek()->format('M d') }}</p>
     </div>
 
     <div class="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-lg shadow-xl text-white">
-        <div class="flex items-center justify-between mb-2">
-            <h3 class="font-bold text-lg">This Month</h3>
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="flex items-center justify-between">
+            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
             </svg>
+            <div class="text-right">
+                <h3 class="font-bold text-lg">This Month</h3>
+                <p class="text-4xl font-bold mt-1">₱{{ number_format($monthRevenue ?? 0, 2) }}</p>
+                <p class="text-green-100 text-xs mt-2">{{ \Carbon\Carbon::now()->format('F Y') }}</p>
+            </div>
         </div>
-        <p class="text-4xl font-bold">₱{{ number_format($monthRevenue ?? 0, 2) }}</p>
-        <p class="text-green-100 text-sm mt-2">{{ \Carbon\Carbon::now()->format('F Y') }}</p>
     </div>
 </div>
 

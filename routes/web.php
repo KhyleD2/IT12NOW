@@ -51,6 +51,8 @@ Route::middleware(['auth','role:admin,cashier'])->group(function () {
         ->name('sales.markPaid');
     Route::get('/sales/{sale}/print', [SalesTransactionController::class, 'printReceipt'])
         ->name('sales.printReceipt');
+    Route::get('/sales/{sale}/details', [SalesTransactionController::class, 'details'])
+        ->name('sales.details');
 });
 
 // Users & Employees (Admin only)
@@ -64,13 +66,30 @@ Route::middleware(['auth','role:admin'])->group(function () {
     Route::get('/users/managers', [UserController::class, 'listManagers'])->name('users.list-managers');
     Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
     Route::get('/employees', [EmployeeController::class, 'index'])->name('employees.index');
+});
 
-    // Supplier Transactions
+// Supplier Transactions (Admin + Manager)
+Route::middleware(['auth','role:admin,manager'])->group(function () {
     Route::get('/supplier-transactions', [SupplierTransactionController::class, 'index'])
         ->name('supplier.transactions');
+    Route::get('/supplier-transactions/create', [SupplierTransactionController::class, 'create'])
+        ->name('supplier-transactions.create');
+    Route::post('/supplier-transactions', [SupplierTransactionController::class, 'store'])
+        ->name('supplier-transactions.store');
+    Route::get('/supplier-transactions/{supplier_transaction}/edit', [SupplierTransactionController::class, 'edit'])
+        ->name('supplier-transactions.edit');
+    Route::put('/supplier-transactions/{supplier_transaction}', [SupplierTransactionController::class, 'update'])
+        ->name('supplier-transactions.update');
+    Route::delete('/supplier-transactions/{supplier_transaction}', [SupplierTransactionController::class, 'destroy'])
+        ->name('supplier-transactions.destroy');
     Route::put('/supplier-transactions/{supplier_transaction}/pay', [SupplierTransactionController::class, 'pay'])
         ->name('supplier-transactions.pay');
     Route::get('/supplier-transactions/{supplier_transaction}/receipt', [SupplierTransactionController::class, 'printReceipt'])
         ->name('supplier-transactions.receipt');
-    Route::resource('supplier-transactions', SupplierTransactionController::class)->except(['index']);
+    
+    // AJAX routes for getting products and varieties
+    Route::get('/supplier-transactions/products/{supplier}', [SupplierTransactionController::class, 'getProductsBySupplier'])
+        ->name('supplier-transactions.products');
+    Route::get('/supplier-transactions/varieties/{product}', [SupplierTransactionController::class, 'getVarietiesByProduct'])
+        ->name('supplier-transactions.varieties');
 });
