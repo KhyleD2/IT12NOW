@@ -11,10 +11,15 @@ use App\Models\User;
 
 class SalesTransactionController extends Controller
 {
-    // List all transactions
+    // List all transactions - FIXED: Only show transactions with valid relationships
     public function index()
     {
-        $transactions = SalesTransaction::with(['customer', 'user', 'details.product'])->get();
+        $transactions = SalesTransaction::with(['customer', 'user', 'details.product'])
+            ->whereHas('customer')
+            ->whereHas('user')
+            ->orderBy('transaction_ID', 'desc')
+            ->get();
+        
         return view('sales.index', compact('transactions'));
     }
 
@@ -36,13 +41,15 @@ class SalesTransactionController extends Controller
             'payment_method' => 'required|in:Cash,GCash',
             'products.*.Product_ID' => 'required|exists:products,Product_ID',
             'products.*.Quantity' => 'required|numeric|min:0.1',
+            'products.*.Kilo' => 'required|numeric|min:0.1',
             'products.*.Price' => 'required|numeric|min:0',
         ]);
 
-        // Calculate total
+        // Calculate total based on Kilo × Price
         $total = 0;
         foreach ($request->products as $p) {
-            $total += $p['Quantity'] * $p['Price'];
+            $kilo = $p['Kilo'] ?? $p['Quantity'];
+            $total += $kilo * $p['Price'];
         }
 
         // Create transaction
@@ -58,16 +65,18 @@ class SalesTransactionController extends Controller
 
         // Save transaction details and update stock
         foreach ($request->products as $p) {
+            $kilo = $p['Kilo'] ?? $p['Quantity'];
+            
             TransactionDetail::create([
                 'transaction_ID' => $transaction->transaction_ID,
                 'Product_ID' => $p['Product_ID'],
-                'Quantity' => $p['Quantity'],
+                'Quantity' => $kilo,
                 'unit_price' => $p['Price'],
             ]);
 
             $product = Product::find($p['Product_ID']);
             if ($product) {
-                $product->decrement('Quantity_in_Stock', $p['Quantity']);
+                $product->decrement('Quantity_in_Stock', $kilo);
             }
         }
 
@@ -83,7 +92,7 @@ class SalesTransactionController extends Controller
         return view('sales.edit', compact('sale', 'customers', 'products', 'users'));
     }
 
-    // Update transaction - FIXED: Now handles full transaction update
+    // Update transaction
     public function update(Request $request, SalesTransaction $sale)
     {
         $request->validate([
@@ -92,9 +101,9 @@ class SalesTransactionController extends Controller
             'payment_method' => 'required|in:Cash,GCash',
             'products.*.Product_ID' => 'required|exists:products,Product_ID',
             'products.*.Quantity' => 'required|numeric|min:0.1',
-            'products.*.Kilo' => 'nullable|numeric|min:0.1',
+            'products.*.Kilo' => 'required|numeric|min:0.1',
             'products.*.Price' => 'required|numeric|min:0',
-            'status' => 'nullable|in:pending,paid', // Made nullable
+            'status' => 'nullable|in:pending,paid',
         ]);
 
         // Update basic transaction info
@@ -102,7 +111,7 @@ class SalesTransactionController extends Controller
             'Customer_ID' => $request->Customer_ID,
             'User_ID' => $request->User_ID,
             'payment_method' => $request->payment_method,
-            'status' => $request->status ?? $sale->status, // Keep existing status if not provided
+            'status' => $request->status ?? $sale->status,
         ]);
 
         // If products are being updated, handle transaction details
@@ -115,14 +124,14 @@ class SalesTransactionController extends Controller
             
             // Create new details
             foreach ($request->products as $p) {
-                $quantity = $p['Kilo'] ?? $p['Quantity'];
-                $lineTotal = $quantity * $p['Price'];
+                $kilo = $p['Kilo'] ?? $p['Quantity'];
+                $lineTotal = $kilo * $p['Price'];
                 $total += $lineTotal;
                 
                 TransactionDetail::create([
                     'transaction_ID' => $sale->transaction_ID,
                     'Product_ID' => $p['Product_ID'],
-                    'Quantity' => $quantity,
+                    'Quantity' => $kilo,
                     'unit_price' => $p['Price'],
                 ]);
             }
@@ -134,7 +143,7 @@ class SalesTransactionController extends Controller
         return redirect()->route('sales.index')->with('success', 'Transaction updated successfully.');
     }
 
-    // Mark pending transaction as paid and redirect to print receipt
+    // Mark pending transaction as paid
     public function markPaid(SalesTransaction $sale)
     {
         $sale->update(['status' => 'paid']);
@@ -163,7 +172,7 @@ class SalesTransactionController extends Controller
         return redirect()->route('sales.index')->with('success', 'Transaction deleted successfully.');
     }
 
-    // Get transaction details for modal view (JSON response)
+    // Get transaction details for modal view
     public function details(SalesTransaction $sale)
     {
         $sale->load(['customer', 'user', 'details.product']);
@@ -177,11 +186,11 @@ class SalesTransactionController extends Controller
             'payment_method' => $sale->payment_method,
             'status' => $sale->status,
             'customer' => [
-                'Customer_Name' => $sale->customer->Customer_Name
+                'Customer_Name' => $sale->customer->Customer_Name ?? 'N/A'
             ],
             'user' => [
-                'fname' => $sale->user->fname,
-                'lname' => $sale->user->lname
+                'fname' => $sale->user->fname ?? 'N/A',
+                'lname' => $sale->user->lname ?? ''
             ],
             'details' => $sale->details->map(function($detail) {
                 return [

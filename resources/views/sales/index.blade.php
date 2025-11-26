@@ -26,11 +26,11 @@
             </tr>
         </thead>
         <tbody>
-            @foreach($transactions as $transaction)
+            @forelse($transactions as $transaction)
             <tr class="border-t hover:bg-gray-50">
                 <td class="py-3 px-4">{{ $transaction->transaction_ID }}</td>
-                <td class="py-3 px-4">{{ $transaction->customer->Customer_Name }}</td>
-                <td class="py-3 px-4">{{ $transaction->user->fname }} {{ $transaction->user->lname }}</td>
+                <td class="py-3 px-4">{{ $transaction->customer->Customer_Name ?? 'N/A' }}</td>
+                <td class="py-3 px-4">{{ $transaction->user ? ($transaction->user->fname . ' ' . $transaction->user->lname) : 'N/A' }}</td>
                 <td class="py-3 px-4">{{ \Carbon\Carbon::parse($transaction->transaction_date)->format('M d, Y') }}</td>
                 <td class="py-3 px-4 text-right font-semibold">₱{{ number_format($transaction->total_amount, 2) }}</td>
                 <td class="py-3 px-4 text-center">
@@ -79,7 +79,11 @@
                     </div>
                 </td>
             </tr>
-            @endforeach
+            @empty
+            <tr>
+                <td colspan="8" class="py-8 text-center text-gray-500">No transactions found</td>
+            </tr>
+            @endforelse
         </tbody>
     </table>
 </div>
@@ -103,10 +107,8 @@
 
 <script>
 function viewTransaction(transactionId) {
-    // Show modal
     document.getElementById('transactionModal').classList.remove('hidden');
     
-    // Fetch transaction details
     fetch(`/sales/${transactionId}/details`)
         .then(response => response.json())
         .then(data => {
@@ -192,7 +194,6 @@ function closeModal() {
     document.getElementById('transactionModal').classList.add('hidden');
 }
 
-// Close modal when clicking outside
 document.getElementById('transactionModal').addEventListener('click', function(e) {
     if (e.target === this) {
         closeModal();

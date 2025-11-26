@@ -62,21 +62,30 @@ class SalesController extends Controller
                 return back()->withInput()->withErrors('One of the selected products is expired or out of stock and cannot be sold.');
             }
             
-            // Check if quantity exceeds available stock
-            $quantityToSell = $item['Kilo'] ?? $item['Quantity'];
-            if ($quantityToSell > $product->Quantity_in_Stock) {
+            // Check if kilo exceeds available stock
+            $kiloToSell = $item['Kilo'];
+            if ($kiloToSell > $product->Quantity_in_Stock) {
                 return back()->withInput()->withErrors([
-                    'products' => "Cannot sell {$quantityToSell} kg of {$product->Product_Name}. Only {$product->Quantity_in_Stock} kg available in stock."
+                    'products' => "Cannot sell {$kiloToSell} kg of {$product->Product_Name}. Only {$product->Quantity_in_Stock} kg available in stock."
                 ]);
             }
         }
 
+        // Calculate total_amount based on Kilo × Price
+        $totalAmount = 0;
+        foreach ($request->products as $product) {
+            $totalAmount += $product['Kilo'] * $product['Price'];
+        }
+
+        // Create the sale with total_amount
         $sale = SalesTransaction::create([
             'Customer_ID' => $request->Customer_ID,
             'User_ID' => $request->User_ID,
             'payment_method' => $request->payment_method,
+            'total_amount' => $totalAmount,
         ]);
 
+        // Attach products to the sale
         foreach ($request->products as $product) {
             $sale->products()->attach($product['Product_ID'], [
                 'Quantity' => $product['Quantity'],
@@ -130,12 +139,28 @@ class SalesController extends Controller
             if (($product->expiry_date && $product->expiry_date < Carbon::today()) || $product->Quantity_in_Stock <= 0) {
                 return back()->withErrors('One of the selected products is expired or out of stock and cannot be sold.');
             }
+            
+            // Check if kilo exceeds available stock
+            $kiloToSell = $item['Kilo'];
+            if ($kiloToSell > $product->Quantity_in_Stock) {
+                return back()->withErrors([
+                    'products' => "Cannot sell {$kiloToSell} kg of {$product->Product_Name}. Only {$product->Quantity_in_Stock} kg available in stock."
+                ]);
+            }
         }
 
+        // Calculate total_amount based on Kilo × Price
+        $totalAmount = 0;
+        foreach ($request->products as $product) {
+            $totalAmount += $product['Kilo'] * $product['Price'];
+        }
+
+        // Update the sale with total_amount
         $sale->update([
             'Customer_ID' => $request->Customer_ID,
             'User_ID' => $request->User_ID,
             'payment_method' => $request->payment_method,
+            'total_amount' => $totalAmount,
         ]);
 
         // Sync products with quantity, kilo, and price

@@ -6,7 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class SalesTransaction extends Model
 {
+    protected $table = 'sales_transactions'; // ✅ Add this line - use your actual table name
     protected $primaryKey = 'transaction_ID';
+    public $timestamps = true; // Laravel expects created_at and updated_at
 
     protected $fillable = [
         'Customer_ID', 'User_ID', 'transaction_date', 'total_amount', 'payment_method', 'receipt_number', 'status'
