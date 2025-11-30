@@ -48,7 +48,7 @@ class SalesTransactionController extends Controller
         // Calculate total based on Kilo × Price
         $total = 0;
         foreach ($request->products as $p) {
-            $kilo = $p['Kilo'] ?? $p['Quantity'];
+            $kilo = $p['Kilo'];
             $total += $kilo * $p['Price'];
         }
 
@@ -65,18 +65,21 @@ class SalesTransactionController extends Controller
 
         // Save transaction details and update stock
         foreach ($request->products as $p) {
-            $kilo = $p['Kilo'] ?? $p['Quantity'];
+            // FIXED: Use Kilo for pricing but Quantity for stock deduction
+            $kilo = $p['Kilo'];
+            $quantity = $p['Quantity']; // THIS deducts from stock
             
             TransactionDetail::create([
                 'transaction_ID' => $transaction->transaction_ID,
                 'Product_ID' => $p['Product_ID'],
-                'Quantity' => $kilo,
+                'Quantity' => $kilo, // Save kilo in the transaction detail
                 'unit_price' => $p['Price'],
             ]);
 
+            // CRITICAL FIX: Deduct by QUANTITY, not by Kilo
             $product = Product::find($p['Product_ID']);
             if ($product) {
-                $product->decrement('Quantity_in_Stock', $kilo);
+                $product->decrement('Quantity_in_Stock', $quantity);
             }
         }
 
@@ -106,6 +109,15 @@ class SalesTransactionController extends Controller
             'status' => 'nullable|in:pending,paid',
         ]);
 
+        // First, restore old stock quantities
+        foreach ($sale->details as $oldDetail) {
+            $product = Product::find($oldDetail->Product_ID);
+            if ($product) {
+                // Restore the quantity that was previously deducted
+                $product->increment('Quantity_in_Stock', $oldDetail->Quantity);
+            }
+        }
+
         // Update basic transaction info
         $sale->update([
             'Customer_ID' => $request->Customer_ID,
@@ -122,18 +134,25 @@ class SalesTransactionController extends Controller
             // Calculate new total
             $total = 0;
             
-            // Create new details
+            // Create new details and deduct new stock
             foreach ($request->products as $p) {
-                $kilo = $p['Kilo'] ?? $p['Quantity'];
+                $kilo = $p['Kilo'];
+                $quantity = $p['Quantity'];
                 $lineTotal = $kilo * $p['Price'];
                 $total += $lineTotal;
                 
                 TransactionDetail::create([
                     'transaction_ID' => $sale->transaction_ID,
                     'Product_ID' => $p['Product_ID'],
-                    'Quantity' => $kilo,
+                    'Quantity' => $kilo, // Save kilo in transaction detail
                     'unit_price' => $p['Price'],
                 ]);
+
+                // CRITICAL FIX: Deduct by QUANTITY, not by Kilo
+                $product = Product::find($p['Product_ID']);
+                if ($product) {
+                    $product->decrement('Quantity_in_Stock', $quantity);
+                }
             }
             
             // Update total amount

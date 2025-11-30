@@ -14,7 +14,6 @@
 @endif
 
 <!-- Info box for completed transactions -->
-@if(!empty($latestSupplierTransactions))
 <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
     <div class="flex">
         <div class="flex-shrink-0">
@@ -29,7 +28,6 @@
         </div>
     </div>
 </div>
-@endif
 
 <form action="{{ route('stockins.store') }}" method="POST" class="bg-white p-6 rounded shadow" id="stockin_form">
     @csrf
@@ -59,6 +57,7 @@
         <input type="number" step="0.01" name="quantity" id="quantity_input" class="w-full border p-2 rounded" min="0.01" required>
         <p id="quantity_note" class="text-sm text-blue-600 mt-1"></p>
         <p id="quantity_warning" class="text-sm text-red-600 mt-1 hidden"></p>
+        <p id="no_stock_warning" class="text-sm text-red-600 font-semibold mt-1 hidden"></p>
     </div>
 
     <div class="mb-4">
@@ -96,6 +95,7 @@ const dateInput = document.getElementById('date_input');
 const quantityNote = document.getElementById('quantity_note');
 const priceNote = document.getElementById('price_note');
 const quantityWarning = document.getElementById('quantity_warning');
+const noStockWarning = document.getElementById('no_stock_warning');
 const submitBtn = document.getElementById('submit_btn');
 const stockinForm = document.getElementById('stockin_form');
 const supplierTransactionIdInput = document.getElementById('supplier_transaction_id');
@@ -105,6 +105,7 @@ const latestTransactions = @json($latestSupplierTransactions);
 
 // Store max quantity for current product
 let maxQuantity = null;
+let canAddStock = true;
 
 // Debug: Check if data is received
 console.log('Latest Completed Transactions with Remaining Qty:', latestTransactions);
@@ -112,19 +113,29 @@ console.log('Latest Completed Transactions with Remaining Qty:', latestTransacti
 function autoFillFromSupplierTransaction() {
     const productId = productSelect.value;
     
-    // Reset notes and warnings
+    // Reset all notes and warnings
     quantityNote.innerHTML = '';
     priceNote.innerHTML = '';
     quantityWarning.classList.add('hidden');
     quantityWarning.innerHTML = '';
+    noStockWarning.classList.add('hidden');
+    noStockWarning.innerHTML = '';
     maxQuantity = null;
+    canAddStock = true;
     
     // Clear the quantity input when changing products
     quantityInput.value = '';
+    priceInput.value = '';
     
     // Remove max attribute and clear supplier transaction ID
     quantityInput.removeAttribute('max');
     supplierTransactionIdInput.value = '';
+    
+    // Enable inputs by default
+    quantityInput.disabled = false;
+    priceInput.disabled = false;
+    submitBtn.disabled = false;
+    submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
     
     if (productId && latestTransactions[productId]) {
         const transaction = latestTransactions[productId];
@@ -138,32 +149,46 @@ function autoFillFromSupplierTransaction() {
         
         // Auto-fill quantity with REMAINING quantity
         quantityInput.value = transaction.quantity;
-        quantityNote.innerHTML = '<span class="text-orange-600">(Remaining: ' + maxQuantity + ' kg of ' + transaction.original_quantity + ' kg supplied)</span>';
+        quantityNote.innerHTML = '<span class="text-green-600">✓ Available: <strong>' + maxQuantity + '</strong> (out of ' + transaction.original_quantity + ' supplied, ' + transaction.already_stocked + ' already stocked)</span>';
         
-        // Auto-fill price (calculated per kg)
+        // Auto-fill price (calculated per unit)
         priceInput.value = transaction.price;
-        priceNote.innerHTML = '';
+        priceNote.innerHTML = '<span class="text-green-600">✓ Price auto-filled from supplier transaction</span>';
         
-    } else {
-        // Clear fields if no completed transaction found
-        quantityInput.value = '';
-        priceInput.value = '';
+    } else if (productId) {
+        // No supplier transaction available - DISABLE FORM
+        canAddStock = false;
         
-        if (productId) {
-            quantityNote.innerHTML = '<span class="text-gray-500">No available supplier transaction for this product.</span>';
-            priceNote.innerHTML = '<span class="text-gray-500">Please enter price manually.</span>';
-        }
+        noStockWarning.classList.remove('hidden');
+        noStockWarning.innerHTML = '⚠️ <strong>Cannot add stock!</strong> All supplier quantities have been used. Please create a new Supplier Transaction first.';
+        
+        quantityNote.innerHTML = '<span class="text-gray-500">No available supplier transaction for this product.</span>';
+        priceNote.innerHTML = '<span class="text-gray-500">Create a Supplier Transaction to add stock.</span>';
+        
+        // Disable form inputs
+        quantityInput.disabled = true;
+        priceInput.disabled = true;
+        submitBtn.disabled = true;
+        submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        
+        quantityInput.classList.add('bg-gray-100');
+        priceInput.classList.add('bg-gray-100');
     }
 }
 
 // Validate quantity on input
 quantityInput.addEventListener('input', function() {
+    if (!canAddStock) {
+        this.value = '';
+        return;
+    }
+    
     if (maxQuantity !== null) {
         const enteredQuantity = parseFloat(this.value);
         
         if (enteredQuantity > maxQuantity) {
             quantityWarning.classList.remove('hidden');
-            quantityWarning.innerHTML = '<strong>Warning:</strong> Quantity cannot exceed ' + maxQuantity + ' kg (remaining quantity). Please adjust.';
+            quantityWarning.innerHTML = '⚠️ <strong>Error:</strong> Quantity cannot exceed <strong>' + maxQuantity + '</strong> (remaining quantity from supplier transaction).';
             quantityInput.classList.add('border-red-500');
             submitBtn.disabled = true;
             submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
@@ -175,21 +200,31 @@ quantityInput.addEventListener('input', function() {
         }
     }
     
-    // Update the maximum note dynamically
+    // Update the availability note dynamically
     if (maxQuantity !== null && latestTransactions[productSelect.value]) {
         const transaction = latestTransactions[productSelect.value];
-        quantityNote.innerHTML = '<span class="text-orange-600">(Remaining: ' + maxQuantity + ' kg of ' + transaction.original_quantity + ' kg supplied)</span>';
+        const remaining = maxQuantity - (parseFloat(this.value) || 0);
+        
+        if (remaining >= 0) {
+            quantityNote.innerHTML = '<span class="text-green-600">✓ Available: <strong>' + maxQuantity + '</strong> (out of ' + transaction.original_quantity + ' supplied, ' + transaction.already_stocked + ' already stocked)</span>';
+        }
     }
 });
 
 // Form validation before submit
 stockinForm.addEventListener('submit', function(e) {
+    if (!canAddStock) {
+        e.preventDefault();
+        alert('Error: Cannot add stock. Please create a new Supplier Transaction first.');
+        return false;
+    }
+    
     if (maxQuantity !== null) {
         const enteredQuantity = parseFloat(quantityInput.value);
         
         if (enteredQuantity > maxQuantity) {
             e.preventDefault();
-            alert('Error: Quantity (' + enteredQuantity + ' kg) exceeds remaining quantity (' + maxQuantity + ' kg). Please adjust the quantity.');
+            alert('Error: Quantity (' + enteredQuantity + ') exceeds remaining quantity (' + maxQuantity + '). Please adjust the quantity.');
             return false;
         }
     }

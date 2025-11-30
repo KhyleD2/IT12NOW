@@ -39,9 +39,10 @@
 
     <div class="mb-4">
         <label class="block text-gray-700 font-semibold mb-2">Quantity</label>
-        <input type="number" name="quantity" id="quantity_input" 
+        <input type="number" step="0.01" name="quantity" id="quantity_input" 
             value="{{ old('quantity', $stockin->quantity) }}" 
-            class="w-full border p-2 rounded" min="1" required>
+            class="w-full border p-2 rounded" min="0.01" required>
+        <p class="text-sm text-gray-500 mt-1">Changing this will adjust inventory accordingly</p>
     </div>
 
     <div class="mb-4">
@@ -62,7 +63,8 @@
         <label class="block text-gray-700 font-semibold mb-2">Expiry Date (Optional)</label>
         <input type="date" name="expiry_date" 
             value="{{ old('expiry_date', $stockin->expiry_date ? $stockin->expiry_date->format('Y-m-d') : '') }}" 
-            class="w-full border p-2 rounded">
+            class="w-full border p-2 rounded"
+            min="{{ date('Y-m-d', strtotime('+1 day')) }}">
     </div>
 
     <div class="mb-4">

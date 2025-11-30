@@ -1,5 +1,4 @@
 <?php
-// app/Models/Product.php
 
 namespace App\Models;
 
@@ -38,36 +37,12 @@ class Product extends Model
 
     public function getTotalStockAttribute()
     {
-        return $this->stockIns()->sum('quantity');
+        // Return current stock, not sum of all stock-ins
+        return $this->Quantity_in_Stock;
     }
 
     public function getEarliestExpiryAttribute()
     {
-        return $this->stockIns()
-            ->whereNotNull('expiry_date')
-            ->where('quantity', '>', 0)
-            ->orderBy('expiry_date', 'asc')
-            ->first()?->expiry_date;
-    }
-
-    public function updateFromStockIns()
-    {
-        $totalQuantity = $this->stockIns()->sum('quantity');
-        
-        $earliestExpiry = $this->stockIns()
-            ->whereNotNull('expiry_date')
-            ->where('quantity', '>', 0)
-            ->orderBy('expiry_date', 'asc')
-            ->first();
-        
-        $latestStockIn = $this->stockIns()
-            ->orderBy('date', 'desc')
-            ->first();
-
-        $this->update([
-            'Quantity_in_Stock' => $totalQuantity,
-            'expiry_date' => $earliestExpiry ? $earliestExpiry->expiry_date : null,
-            'unit_price' => $latestStockIn ? $latestStockIn->price : $this->unit_price,
-        ]);
+        return $this->expiry_date;
     }
 }

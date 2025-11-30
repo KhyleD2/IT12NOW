@@ -33,7 +33,6 @@ class StockInController extends Controller
                 ->first();
             
             if ($latest) {
-                // FIXED: Only use quantity_units, not adding quantity_kilos
                 $suppliedQty = (float)$latest->quantity_units;
                 
                 // Calculate how much has already been stocked in from THIS SPECIFIC transaction
@@ -45,14 +44,14 @@ class StockInController extends Controller
                 
                 // Only show if there's remaining quantity
                 if ($remainingQty > 0) {
-                    // Calculate price per kg from supplier transaction
-                    $pricePerKg = $suppliedQty > 0 ? ($latest->total_cost / $suppliedQty) : 0;
+                    // Calculate price per unit from supplier transaction
+                    $pricePerUnit = $suppliedQty > 0 ? ($latest->total_cost / $suppliedQty) : 0;
                     
                     $latestSupplierTransactions[$product->Product_ID] = [
                         'quantity' => $remainingQty,
                         'original_quantity' => $suppliedQty,
                         'already_stocked' => $alreadyStockedQty,
-                        'price' => round($pricePerKg, 2),
+                        'price' => round($pricePerUnit, 2),
                         'date' => $latest->supply_date,
                         'transaction_id' => $latest->Supply_transac_ID,
                     ];
@@ -80,7 +79,6 @@ class StockInController extends Controller
         if ($request->supplier_transaction_id) {
             $transaction = SupplierTransaction::findOrFail($request->supplier_transaction_id);
             
-            // FIXED: Only use quantity_units, not adding quantity_kilos
             $suppliedQty = (float)$transaction->quantity_units;
             
             // Calculate already stocked quantity from this specific transaction
@@ -93,7 +91,7 @@ class StockInController extends Controller
                 return redirect()->back()
                     ->withInput()
                     ->withErrors([
-                        'quantity' => 'Quantity (' . $request->quantity . ' kg) exceeds remaining quantity (' . round($remainingQty, 2) . ' kg). Already stocked: ' . round($alreadyStockedQty, 2) . ' kg out of ' . round($suppliedQty, 2) . ' kg supplied.'
+                        'quantity' => 'Quantity (' . $request->quantity . ') exceeds remaining quantity (' . round($remainingQty, 2) . '). Already stocked: ' . round($alreadyStockedQty, 2) . ' out of ' . round($suppliedQty, 2) . ' supplied.'
                     ]);
             }
         }
@@ -101,12 +99,41 @@ class StockInController extends Controller
         // Create the stock-in record with supplier transaction link
         StockIn::create($request->all());
 
-        // Update product stock in inventory
+        // **FIXED: Handle FIFO and expiry date replacement**
         $product = Product::findOrFail($request->Product_ID);
-        $product->updateFromStockIns();
+        
+        $today = now()->startOfDay();
+        $isCurrentStockExpired = $product->expiry_date && $product->expiry_date < $today;
+        
+        if ($isCurrentStockExpired) {
+            // **FIFO: Replace expired stock with new stock (don't add)**
+            $product->Quantity_in_Stock = $request->quantity;
+            
+            // Update to new expiry date
+            $product->expiry_date = $request->expiry_date;
+            
+            $message = 'Expired stock replaced with new stock! Old expired stock removed. New quantity: ' . $request->quantity;
+        } else {
+            // **Add to existing non-expired stock**
+            $product->Quantity_in_Stock = ($product->Quantity_in_Stock ?? 0) + $request->quantity;
+            
+            // **Update expiry date to EARLIEST date (FIFO principle)**
+            if ($request->expiry_date) {
+                if (!$product->expiry_date || $request->expiry_date < $product->expiry_date) {
+                    $product->expiry_date = $request->expiry_date;
+                }
+            }
+            
+            $message = 'Stock added successfully! Quantity: ' . $request->quantity . ' added to inventory.';
+        }
+        
+        // Update unit price with latest price
+        $product->unit_price = $request->price;
+        
+        $product->save();
 
         return redirect()->route('stockins.index')
-            ->with('success', 'Stock added successfully and inventory updated! Quantity: ' . $request->quantity . ' kg');
+            ->with('success', $message);
     }
 
     public function edit(StockIn $stockin)
@@ -127,11 +154,31 @@ class StockInController extends Controller
             'critical_level' => 'required|integer|min:0',
         ]);
 
+        // **Calculate the difference in quantity**
+        $oldQuantity = $stockin->quantity;
+        $newQuantity = $request->quantity;
+        $quantityDifference = $newQuantity - $oldQuantity;
+
+        // Update the stock-in record
         $stockin->update($request->all());
 
-        // Update product stock
+        // Update product stock by the difference only
         $product = Product::findOrFail($request->Product_ID);
-        $product->updateFromStockIns();
+        $product->Quantity_in_Stock = ($product->Quantity_in_Stock ?? 0) + $quantityDifference;
+        
+        // **Recalculate earliest expiry date from all non-expired stock-ins**
+        $earliestExpiry = StockIn::where('Product_ID', $product->Product_ID)
+            ->whereNotNull('expiry_date')
+            ->where('expiry_date', '>=', now()->startOfDay())
+            ->orderBy('expiry_date', 'asc')
+            ->first();
+        
+        $product->expiry_date = $earliestExpiry ? $earliestExpiry->expiry_date : null;
+        
+        // Update unit price
+        $product->unit_price = $request->price;
+        
+        $product->save();
 
         return redirect()->route('stockins.index')
             ->with('success', 'Stock updated successfully.');
@@ -140,11 +187,24 @@ class StockInController extends Controller
     public function destroy(StockIn $stockin)
     {
         $productId = $stockin->Product_ID;
+        $quantity = $stockin->quantity;
+        
         $stockin->delete();
 
-        // Update product stock after deletion
+        // **Subtract the deleted quantity from product stock**
         $product = Product::findOrFail($productId);
-        $product->updateFromStockIns();
+        $product->Quantity_in_Stock = ($product->Quantity_in_Stock ?? 0) - $quantity;
+        
+        // **Recalculate earliest expiry date from remaining non-expired stock-ins**
+        $earliestExpiry = StockIn::where('Product_ID', $product->Product_ID)
+            ->whereNotNull('expiry_date')
+            ->where('expiry_date', '>=', now()->startOfDay())
+            ->orderBy('expiry_date', 'asc')
+            ->first();
+        
+        $product->expiry_date = $earliestExpiry ? $earliestExpiry->expiry_date : null;
+        
+        $product->save();
 
         return redirect()->route('stockins.index')
             ->with('success', 'Stock deleted successfully.');

@@ -81,10 +81,20 @@
                     @endforeach
                 </select>
 
-                <input type="number" name="products[0][Quantity]" placeholder="Quantity" class="w-24 border p-2 rounded focus:ring-2 focus:ring-green-500 quantity" min="0.1" step="0.1" required>
-                <input type="number" name="products[0][Kilo]" placeholder="Kilo" class="w-24 border p-2 rounded focus:ring-2 focus:ring-green-500 kilo" min="0.1" step="0.1" required>
-                <input type="number" name="products[0][Price]" placeholder="Price per kg" class="w-24 border p-2 rounded focus:ring-2 focus:ring-green-500 price" min="0" step="0.01" required>
-                <span class="w-24 text-gray-700 font-semibold total">0.00</span>
+                <!-- THESE ARE IN THE ORDER THEY APPEAR ON SCREEN -->
+                <!-- First box = Quantity (deducts from stock) -->
+                <input type="number" name="products[0][Quantity]" placeholder="Quantity" class="w-24 border p-2 rounded focus:ring-2 focus:ring-green-500 quantity-input" min="0.1" step="0.1" required>
+                
+                <!-- Second box = Kilo (used for price calculation) -->
+                <input type="number" name="products[0][Kilo]" placeholder="Kilo" class="w-24 border p-2 rounded focus:ring-2 focus:ring-green-500 kilo-input" min="0.1" step="0.1" required>
+                
+                <!-- Third box = Price per kg -->
+                <input type="number" name="products[0][Price]" placeholder="Price per kg" class="w-24 border p-2 rounded focus:ring-2 focus:ring-green-500 price-input" min="0" step="0.01" required>
+                
+                <!-- Total display -->
+                <span class="w-24 text-gray-700 font-semibold total-display">0.00</span>
+                
+                <!-- Remove button -->
                 <button type="button" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded remove-btn">Remove</button>
             </div>
         </div>
@@ -113,18 +123,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const addBtn = document.getElementById('addProductBtn');
     const grandTotalSpan = document.getElementById('grandTotal');
     const saleForm = document.getElementById('saleForm');
-    const submitBtn = document.getElementById('submitBtn');
-
-    // Store max stock per row
-    const rowStockLimits = new Map();
 
     function updateTotals() {
         let grandTotal = 0;
         wrapper.querySelectorAll('.product-row').forEach(row => {
-            const kilo = parseFloat(row.querySelector('.kilo').value) || 0;
-            const price = parseFloat(row.querySelector('.price').value) || 0;
+            const kilo = parseFloat(row.querySelector('.kilo-input').value) || 0;
+            const price = parseFloat(row.querySelector('.price-input').value) || 0;
             const total = kilo * price;
-            row.querySelector('.total').textContent = total.toFixed(2);
+            row.querySelector('.total-display').textContent = total.toFixed(2);
             grandTotal += total;
         });
         grandTotalSpan.textContent = grandTotal.toFixed(2);
@@ -132,8 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function validateStock(row) {
         const select = row.querySelector('.product-select');
-        const quantityInput = row.querySelector('.quantity');
-        const kiloInput = row.querySelector('.kilo');
+        const quantityInput = row.querySelector('.quantity-input');
         
         const selectedOption = select.selectedOptions[0];
         if (!selectedOption || !selectedOption.value) return true;
@@ -141,23 +146,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const maxStock = parseFloat(selectedOption.dataset.stock) || 0;
         const productName = selectedOption.dataset.name || 'Product';
         const enteredQuantity = parseFloat(quantityInput.value) || 0;
-        const enteredKilo = parseFloat(kiloInput.value) || 0;
         
-        // Check both quantity and kilo against stock
+        // ONLY CHECK QUANTITY AGAINST STOCK (NOT KILO)
         if (enteredQuantity > maxStock) {
             quantityInput.classList.add('border-red-500', 'bg-red-50');
             showStockWarning(row, `${productName}: Quantity (${enteredQuantity}) exceeds available stock (${maxStock})`);
             return false;
         } else {
             quantityInput.classList.remove('border-red-500', 'bg-red-50');
-        }
-        
-        if (enteredKilo > maxStock) {
-            kiloInput.classList.add('border-red-500', 'bg-red-50');
-            showStockWarning(row, `${productName}: Kilo (${enteredKilo}) exceeds available stock (${maxStock})`);
-            return false;
-        } else {
-            kiloInput.classList.remove('border-red-500', 'bg-red-50');
         }
         
         hideStockWarning(row);
@@ -196,17 +192,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if(e.target.classList.contains('product-select')) {
             const row = e.target.closest('.product-row');
             const selected = e.target.selectedOptions[0];
-            const priceInput = row.querySelector('.price');
-            const quantityInput = row.querySelector('.quantity');
-            const kiloInput = row.querySelector('.kilo');
+            const priceInput = row.querySelector('.price-input');
+            const quantityInput = row.querySelector('.quantity-input');
             
             if(selected && selected.dataset.price) {
                 priceInput.value = selected.dataset.price;
                 
-                // Set max attribute based on stock
+                // Set max attribute ONLY for quantity (not kilo)
                 const maxStock = parseFloat(selected.dataset.stock) || 0;
                 quantityInput.setAttribute('max', maxStock);
-                kiloInput.setAttribute('max', maxStock);
                 
                 updateTotals();
             }
@@ -219,11 +213,11 @@ document.addEventListener('DOMContentLoaded', () => {
     wrapper.addEventListener('input', e => {
         const row = e.target.closest('.product-row');
         
-        if(e.target.classList.contains('quantity') || e.target.classList.contains('kilo')) {
+        if(e.target.classList.contains('quantity-input')) {
             validateStock(row);
         }
         
-        if(e.target.classList.contains('kilo') || e.target.classList.contains('price')) {
+        if(e.target.classList.contains('kilo-input') || e.target.classList.contains('price-input')) {
             updateTotals();
         }
     });
@@ -251,7 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
             input.classList.remove('border-red-500', 'bg-red-50');
         });
         newRow.querySelector('select').value = '';
-        newRow.querySelector('.total').textContent = '0.00';
+        newRow.querySelector('.total-display').textContent = '0.00';
         
         // Update name attributes
         newRow.querySelectorAll('[name]').forEach(field => {

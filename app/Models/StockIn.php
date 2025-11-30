@@ -10,7 +10,10 @@ class StockIn extends Model
     use HasFactory;
 
     protected $table = 'stock_ins';
-    protected $primaryKey = 'StockIn_ID';
+    
+    // FIXED: Primary key is Stock_ID (not StockIn_ID)
+    protected $primaryKey = 'Stock_ID';
+    
     public $timestamps = true;
 
     protected $fillable = [
@@ -22,7 +25,7 @@ class StockIn extends Model
         'unit',
         'expiry_date',
         'critical_level',
-        'variety', // ADDED
+        'variety',
     ];
 
     protected $casts = [

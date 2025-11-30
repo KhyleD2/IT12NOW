@@ -6,9 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class SalesTransaction extends Model
 {
-    protected $table = 'sales_transactions'; // ✅ Add this line - use your actual table name
+    protected $table = 'sales_transactions';
     protected $primaryKey = 'transaction_ID';
-    public $timestamps = true; // Laravel expects created_at and updated_at
+    public $timestamps = true;
 
     protected $fillable = [
         'Customer_ID', 'User_ID', 'transaction_date', 'total_amount', 'payment_method', 'receipt_number', 'status'
@@ -24,5 +24,12 @@ class SalesTransaction extends Model
 
     public function details() {
         return $this->hasMany(TransactionDetail::class, 'transaction_ID', 'transaction_ID');
+    }
+
+    // ADD THIS NEW RELATIONSHIP
+    public function products() {
+        return $this->belongsToMany(Product::class, 'transaction_details', 'transaction_ID', 'Product_ID')
+            ->withPivot('Quantity', 'Kilo', 'Price')
+            ->withTimestamps();
     }
 }
